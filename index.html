@@ -162,10 +162,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div id="leaders" class="leaders"><div class="loading">Calculating…</div></div>
 </section>
 
-<section id="players" class="section card card-inner">
-<div class="section-title"><h2>Player Universe</h2><button class="secondary super-only" style="display:none" onclick="openModal('playerModal');resetPlayerForm()">＋ Player</button></div>
-<div id="playerList" class="players"><div class="loading">Loading players…</div></div>
-</section>
+
 
 <section id="teams" class="section card card-inner">
 <div class="section-title"><h2>Teams</h2><button class="secondary super-only" style="display:none" onclick="openModal('teamModal');loadTeamEditor()">Edit Names</button></div>
@@ -195,6 +192,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div class="field"><label>Match Code</label><input id="matchCode" required placeholder="MD-001"></div>
 <div class="field"><label>Match Date</label><input id="matchDate" type="date" required></div>
 <div class="field"><label>Kickoff Time</label><input id="kickoff" type="time"></div>
+<div class="field"><label>End Time</label><input id="matchEnd" type="time"></div>
 <div class="field"><label>Location</label><input id="location" placeholder="Venue"></div>
 <div class="field"><label>Team A</label><select id="teamA" required></select></div>
 <div class="field"><label>Team B</label><select id="teamB" required></select></div>
@@ -247,6 +245,8 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <!-- PLAYERS LIST MODAL -->
 <div id="playersListModal" class="modal" onclick="if(event.target===this)closeModal('playersListModal')">
 <div class="modalbox"><div class="modalhead"><div class="modaltitle">All Players</div><button class="close" onclick="closeModal('playersListModal')">×</button></div>
+<button class="primary super-only" style="display:none;margin-bottom:14px" onclick="openModal('playerModal');resetPlayerForm()">＋ ADD PLAYER</button>
+<div id="playersFilterBar" class="sub-picker" style="margin-bottom:14px"></div>
 <div id="playersModalList" class="players-modal-list"><div class="loading">Loading players…</div></div>
 </div></div>
 
@@ -346,13 +346,13 @@ async function loadAll(){
  try{players=await api("players","?select=*&order=player_id.asc")}catch(e){errors.push(e.message)}
  try{matches=await api("matches","?select=*&order=match_date.desc,created_at.desc")}catch(e){errors.push(e.message)}
  try{matchPlayers=await api("match_players","?select=*")}catch(e){errors.push(e.message)}
- try{teams=await api("teams","?select=id,team_code,team_name,status,created_at&order=team_name.asc")}catch(e){errors.push(e.message)}
+ try{teams=await api("teams","?select=id,team_code,team_name,status,created_at,captain_id,vice_captain_id&order=team_name.asc")}catch(e){errors.push(e.message)}
  try{teamSquad=await api("team_squad","?select=*")}catch(e){teamSquad=[];errors.push("Squad data: "+e.message+" (run the squad migration if you haven't yet)")}
  $("errors").innerHTML=errors.length?'<div class="error">'+errors.map(esc).join("<br>")+"</div>":"";
  render();
 }
 function render(){
- renderUpcoming();renderLastMatch();renderHeadToHead();renderPlayers();renderTeams();renderLeaders();
+ renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();
  if($("playersListModal").classList.contains("show"))renderPlayersModal();
 }
 const AVATAR_COLORS=["#ffd447","#25d6ff","#ff5360","#42e3a4","#c084fc","#fb923c"];
@@ -364,10 +364,19 @@ function matchDateTime(m){return new Date(m.match_date+"T"+(m.kickoff_time||"00:
 function hasScore(m){return m.team_a_score!==null&&m.team_a_score!==undefined&&m.team_b_score!==null&&m.team_b_score!==undefined}
 function scoreLine(m){return hasScore(m)?(m.team_a_score+' — '+m.team_b_score):'Score pending'}
 function enterScoreBtn(m){return isMatchAdmin?'<button class="secondary" style="margin-top:8px" onclick="event.stopPropagation();openEnterScore(\''+m.id+'\')">Enter Score</button>':''}
+function timeToMinutes(t){const[h,mi]=String(t).split(":").map(Number);return h*60+mi}
+function minutesToTime(mins){mins=((mins%1440)+1440)%1440;const h=Math.floor(mins/60),m=mins%60;return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")}
+function breakWindow(m){
+ if(!m.kickoff_time||!m.end_time)return null;
+ let start=timeToMinutes(m.kickoff_time),end=timeToMinutes(m.end_time);
+ if(end<=start)end+=1440;
+ const mid=start+(end-start)/2;
+ return minutesToTime(Math.round(mid))+"–"+minutesToTime(Math.round(mid)+10);
+}
 function renderUpcoming(){
  const now=new Date();
  const up=matches.filter(m=>matchDateTime(m)>=now).sort((a,b)=>matchDateTime(a)-matchDateTime(b));
- $("upcomingRibbon").innerHTML=up.length?up.map(m=>'<div class="rcard"><div class="small">'+esc(m.match_code)+' · '+esc(m.match_date)+(m.kickoff_time?' · '+esc(m.kickoff_time):"")+'</div><div class="rteams"><span>'+esc(teamName(m.team_a_id,m.team_a_name))+'</span><span class="muted">vs</span><span>'+esc(teamName(m.team_b_id,m.team_b_name))+'</span></div><div class="muted">📍 '+esc(m.location||"—")+'</div></div>').join(""):'<div class="empty">No upcoming matches scheduled.</div>';
+ $("upcomingRibbon").innerHTML=up.length?up.map(m=>{const brk=breakWindow(m);return '<div class="rcard"><div class="small">'+esc(m.match_code)+' · '+esc(m.match_date)+(m.kickoff_time?' · '+esc(m.kickoff_time):"")+(m.end_time?'–'+esc(m.end_time):"")+'</div><div class="rteams"><span>'+esc(teamName(m.team_a_id,m.team_a_name))+'</span><span class="muted">vs</span><span>'+esc(teamName(m.team_b_id,m.team_b_name))+'</span></div><div class="muted">📍 '+esc(m.location||"—")+'</div>'+(brk?'<div class="muted" style="margin-top:6px;color:var(--cyan)">⏱ Half-time / Drinks Break: '+brk+'</div>':"")+'</div>'}).join(""):'<div class="empty">No upcoming matches scheduled.</div>';
 }
 function renderLastMatch(){
  const now=new Date();
@@ -407,14 +416,17 @@ async function openEnterScore(matchId){
  if(!/^\d+$/.test(a)||!/^\d+$/.test(b)){alert("Enter whole numbers for both scores.");return}
  try{await api("matches","?id=eq."+encodeURIComponent(matchId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_a_score:Number(a),team_b_score:Number(b)})});await loadAll();if(currentReportMatchId===matchId)openMatchReport(matchId)}catch(err){alert("Could not save score: "+err.message)}
 }
+let playerFilter="All";
 function openPlayersModal(){openModal("playersListModal");if(!players.length){api("players","?select=*&order=player_id.asc").then(r=>{players=r;renderPlayersModal()}).catch(e=>{$("playersModalList").innerHTML='<div class="error">'+esc(e.message)+'</div>'})}else renderPlayersModal()}
+function setPlayerFilter(f){playerFilter=f;renderPlayersModal()}
 function renderPlayersModal(){
- $("playersModalList").innerHTML=players.length?players.map(p=>'<div class="pmp-row"><div class="avatar" style="background:'+avatarColor(p.id)+'">'+esc(initials(p.name))+'</div><div style="flex:1"><div class="pmp-name">'+esc(p.name)+(p.nickname?' <span class="muted">"'+esc(p.nickname)+'"</span>':"")+'</div><div class="pmp-meta">ID: '+esc(p.player_id)+' · '+esc(p.position||"Position not set")+' · '+esc(p.status)+'</div></div></div>').join(""):'<div class="empty">No players registered yet.</div>';
-}
-function renderPlayers(){
- const stats={};players.forEach(p=>stats[p.id]={goals:0,assists:0,apps:0,clean:0});
- matchPlayers.forEach(mp=>{if(stats[mp.player_id]){stats[mp.player_id].goals+=Number(mp.goals||0);stats[mp.player_id].assists+=Number(mp.assists||0);stats[mp.player_id].apps++;if(mp.clean_sheet)stats[mp.player_id].clean++}});
- $("playerList").innerHTML=players.length?players.map(p=>{const s=stats[p.id]||{};return'<div class="player"><div><div class="pid">'+esc(p.player_id)+'</div><div class="pname">'+esc(p.name)+'</div><div class="muted">'+esc(p.nickname||"")+' · '+esc(p.position||p.status)+'</div></div><div class="stats"><div><strong>'+s.goals+'</strong> goals</div><div><strong>'+s.assists+'</strong> assists</div><div><strong>'+s.apps+'</strong> apps</div></div>'+(isSuperAdmin?'<button class="secondary" onclick="editPlayer(\''+p.id+'\')">Edit</button>':"")+'</div>'}).join(""):'<div class="empty">No players yet.</div>';
+ const cats=["All","Forward","Midfielder","Defender","Goalkeeper"];
+ const counts=cats.map(c=>c==="All"?players.length:players.filter(p=>p.position===c).length);
+ $("playersFilterBar").innerHTML=cats.map((c,i)=>'<label style="cursor:pointer;'+(playerFilter===c?'background:var(--yellow);color:#07111f':'')+'" onclick="setPlayerFilter(\''+c+'\')">'+c+' ('+counts[i]+')</label>').join("");
+ const stats={};players.forEach(p=>stats[p.id]={goals:0,assists:0,apps:0});
+ matchPlayers.forEach(mp=>{if(stats[mp.player_id]){stats[mp.player_id].goals+=Number(mp.goals||0);stats[mp.player_id].assists+=Number(mp.assists||0);stats[mp.player_id].apps++}});
+ const list=playerFilter==="All"?players:players.filter(p=>p.position===playerFilter);
+ $("playersModalList").innerHTML=list.length?list.map(p=>{const s=stats[p.id]||{goals:0,assists:0,apps:0};return'<div class="pmp-row"><div class="avatar" style="background:'+avatarColor(p.id)+'">'+esc(initials(p.name))+'</div><div style="flex:1"><div class="pmp-name">'+esc(p.name)+(p.nickname?' <span class="muted">"'+esc(p.nickname)+'"</span>':"")+'</div><div class="pmp-meta">ID: '+esc(p.player_id)+' · '+esc(p.position||"Position not set")+' · '+esc(p.status)+' · '+s.goals+'G '+s.assists+'A '+s.apps+' apps</div></div>'+(isSuperAdmin?'<button class="secondary" onclick="editPlayer(\''+p.id+'\')">Edit</button>':"")+'</div>'}).join(""):'<div class="empty">No players in this category.</div>';
 }
 const FUTSAL_SLOTS=[
  {key:"GK",label:"GK",x:80,y:290},
@@ -424,19 +436,25 @@ const FUTSAL_SLOTS=[
  {key:"ALA_D",label:"Wing R",x:135,y:130},
  {key:"PIVO",label:"Pivot",x:80,y:55}
 ];
+const TEAM_COLORS=["#ffd447","#25d6ff","#ff8a3d","#a78bfa","#42e3a4","#ff5360"];
+function teamColor(teamId){const i=teams.findIndex(t=>t.id===teamId);return TEAM_COLORS[i>=0?i%TEAM_COLORS.length:0]}
 function futsalPitchSvg(teamId){
+ const team=teams.find(t=>t.id===teamId);
+ const color=teamColor(teamId);
  const squad=teamSquad.filter(s=>s.team_id===teamId&&s.is_starting);
  const dots=FUTSAL_SLOTS.map(slot=>{
   const s=squad.find(x=>x.slot===slot.key);
   const p=s?players.find(x=>x.id===s.player_id):null;
+  const badge=p&&team&&p.id===team.captain_id?"C":(p&&team&&p.id===team.vice_captain_id?"VC":"");
   return '<g>'
-   +'<circle class="futsal-dot'+(p?"":" empty")+'" cx="'+slot.x+'" cy="'+slot.y+'" r="16"/>'
+   +'<circle class="futsal-dot'+(p?"":" empty")+'" style="'+(p?("stroke:"+color+";fill:"+color+"26"):"")+'" cx="'+slot.x+'" cy="'+slot.y+'" r="16"/>'
    +(p?'<text class="futsal-initials" x="'+slot.x+'" y="'+(slot.y+4)+'">'+esc(initials(p.name))+'</text>':'')
+   +(badge?'<circle cx="'+(slot.x+13)+'" cy="'+(slot.y-13)+'" r="'+(badge==="C"?8:9)+'" fill="'+color+'"/><text x="'+(slot.x+13)+'" y="'+(slot.y-10)+'" style="font:800 8px Inter;fill:#07111f;text-anchor:middle">'+badge+'</text>':'')
    +'<text class="futsal-label" x="'+slot.x+'" y="'+(slot.y+30)+'">'+esc(p?p.name.split(" ")[0]:slot.label)+'</text>'
    +'</g>';
  }).join("");
  return '<svg class="futsal-pitch" viewBox="0 0 160 340" xmlns="http://www.w3.org/2000/svg">'
-  +'<rect x="4" y="4" width="152" height="332" rx="10" fill="#0a1730" stroke="'+"#ffffff22"+'" stroke-width="2"/>'
+  +'<rect x="4" y="4" width="152" height="332" rx="10" fill="#0a1730" stroke="'+color+'44" stroke-width="2"/>'
   +'<line x1="4" y1="170" x2="156" y2="170" stroke="#ffffff22" stroke-width="1.5"/>'
   +'<circle cx="80" cy="170" r="26" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
   +'<rect x="30" y="4" width="100" height="34" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
@@ -446,8 +464,17 @@ function renderSquadSubs(teamId){
  const subs=teamSquad.filter(s=>s.team_id===teamId&&!s.is_starting).map(s=>players.find(p=>p.id===s.player_id)).filter(Boolean);
  return subs.length?subs.map(p=>'<span class="sub-chip"><span class="avatar" style="width:24px;height:24px;font-size:10px;background:'+avatarColor(p.id)+'">'+esc(initials(p.name))+'</span>'+esc(p.name)+'</span>').join(""):'<span class="muted">No substitutes marked.</span>';
 }
+function renderReplacements(teamId){
+ const starters=teamSquad.filter(s=>s.team_id===teamId&&s.is_starting&&s.preferred_sub_id);
+ if(!starters.length)return'<span class="muted">No like-for-like backups set yet.</span>';
+ return starters.map(s=>{
+  const starter=players.find(p=>p.id===s.player_id),sub=players.find(p=>p.id===s.preferred_sub_id);
+  if(!starter||!sub)return"";
+  return '<div style="font-size:13px;margin-bottom:6px">'+esc(starter.name)+' <span class="muted">→ backup:</span> '+esc(sub.name)+'</div>';
+ }).join("");
+}
 function renderTeams(){
- $("teamList").innerHTML=teams.length?teams.map(t=>'<div class="team-card" style="flex-direction:column;align-items:stretch;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="pid">TEAM</div><div class="team-name">'+esc(t.team_name)+'</div></div>'+(isSuperAdmin?'<div style="display:flex;gap:8px"><button class="secondary" onclick="openModal(\'squadModal\');openSquadEditor(\''+t.id+'\')">Manage Squad</button><button class="secondary" onclick="openModal(\'teamModal\');loadTeamEditor()">Edit</button></div>':"")+'</div><div class="futsal-wrap">'+futsalPitchSvg(t.id)+'<div class="squad-subs"><h4>Substitutes</h4>'+renderSquadSubs(t.id)+'</div></div></div>').join(""):'<div class="empty">No teams table/data available.</div>';
+ $("teamList").innerHTML=teams.length?teams.map(t=>'<div class="team-card" style="flex-direction:column;align-items:stretch;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="pid">TEAM</div><div class="team-name">'+esc(t.team_name)+'</div></div>'+(isSuperAdmin?'<div style="display:flex;gap:8px"><button class="secondary" onclick="openModal(\'squadModal\');openSquadEditor(\''+t.id+'\')">Manage Squad</button><button class="secondary" onclick="openModal(\'teamModal\');loadTeamEditor()">Edit</button></div>':"")+'</div><div class="futsal-wrap">'+futsalPitchSvg(t.id)+'<div class="squad-subs"><h4>Substitutes</h4>'+renderSquadSubs(t.id)+'<h4 style="margin-top:16px">Like-for-Like Backups</h4>'+renderReplacements(t.id)+'</div></div></div>').join(""):'<div class="empty">No teams table/data available.</div>';
 }
 function renderLeaders(){
  const stats={};players.forEach(p=>stats[p.id]={...p,goals:0,assists:0,apps:0,clean:0});
@@ -463,12 +490,20 @@ function suggestMatchCode(){
  const next=(nums.length?Math.max(...nums):0)+1;
  return "MD-"+String(next).padStart(3,"0");
 }
-function resetMatchForm(){ $("matchCode").value=suggestMatchCode();$("matchDate").value=new Date().toISOString().slice(0,10);$("kickoff").value="";$("location").value="";clearMsg("matchMsg");loadTeamSelects()}
-async function loadTeamSelects(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at&order=team_name.asc");const o='<option value="">Select team</option>'+teams.map(t=>'<option value="'+t.id+'">'+esc(t.team_name)+'</option>').join("");$("teamA").innerHTML=o;$("teamB").innerHTML=o}catch(e){showMsg("matchMsg",e.message)}}
-async function saveMatch(e){e.preventDefault();try{if($("teamA").value===$("teamB").value)throw Error("Team A and Team B must be different.");const teamAId=$("teamA").value,teamBId=$("teamB").value;const body={match_code:$("matchCode").value.trim(),match_date:$("matchDate").value,kickoff_time:$("kickoff").value||null,location:$("location").value.trim()||null,team_a_id:teamAId,team_b_id:teamBId,team_a_name:teamName(teamAId),team_b_name:teamName(teamBId),team_a_score:null,team_b_score:null};await api("matches","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("matchMsg","Match scheduled.",true);await loadAll();setTimeout(()=>closeModal("matchModal"),500)}catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("matchMsg",dup?"That match code is already used. Try "+suggestMatchCode()+" or pick another.":e.message)}}
-async function loadTeamEditor(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at&order=team_name.asc");$("teamEditor").innerHTML=(teams.length?teams.map(t=>'<div class="field" style="margin-bottom:14px"><label>Team</label><input data-team-id="'+esc(t.id)+'" value="'+esc(t.team_name||"")+'"></div>').join(""):'<div class="empty">No teams available.</div>')+'<div class="form-actions"><button class="primary" onclick="saveTeams()">SAVE TEAM NAMES</button></div><hr style="border-color:var(--line);margin:18px 0"><div class="field"><label>Add New Team — Name</label><input id="newTeamName" placeholder="e.g. FC Falcons"></div><div class="form-actions"><button class="secondary" onclick="addTeam()">＋ ADD TEAM</button></div>'}catch(e){$("teamEditor").innerHTML='<div class="error">'+esc(e.message)+'</div>'}}
+function resetMatchForm(){ $("matchCode").value=suggestMatchCode();$("matchDate").value=new Date().toISOString().slice(0,10);$("kickoff").value="";$("matchEnd").value="";$("location").value="";clearMsg("matchMsg");loadTeamSelects()}
+async function loadTeamSelects(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at,captain_id,vice_captain_id&order=team_name.asc");const o='<option value="">Select team</option>'+teams.map(t=>'<option value="'+t.id+'">'+esc(t.team_name)+'</option>').join("");$("teamA").innerHTML=o;$("teamB").innerHTML=o}catch(e){showMsg("matchMsg",e.message)}}
+async function saveMatch(e){e.preventDefault();try{if($("teamA").value===$("teamB").value)throw Error("Team A and Team B must be different.");const teamAId=$("teamA").value,teamBId=$("teamB").value;const body={match_code:$("matchCode").value.trim(),match_date:$("matchDate").value,kickoff_time:$("kickoff").value||null,end_time:$("matchEnd").value||null,location:$("location").value.trim()||null,team_a_id:teamAId,team_b_id:teamBId,team_a_name:teamName(teamAId),team_b_name:teamName(teamBId),team_a_score:null,team_b_score:null};await api("matches","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("matchMsg","Match scheduled.",true);await loadAll();setTimeout(()=>closeModal("matchModal"),500)}catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("matchMsg",dup?"That match code is already used. Try "+suggestMatchCode()+" or pick another.":e.message)}}
+async function loadTeamEditor(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at,captain_id,vice_captain_id&order=team_name.asc");$("teamEditor").innerHTML=(teams.length?teams.map(t=>{
+ const squadPlayers=teamSquad.filter(s=>s.team_id===t.id).map(s=>players.find(p=>p.id===s.player_id)).filter(Boolean);
+ const opts=(selectedId)=>'<option value="">\u2014 None \u2014</option>'+squadPlayers.map(p=>'<option value="'+p.id+'"'+(selectedId===p.id?" selected":"")+'>'+esc(p.name)+'</option>').join("");
+ return '<div style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)"><div class="field" style="margin-bottom:10px"><label>Team</label><input data-team-id="'+esc(t.id)+'" value="'+esc(t.team_name||"")+'"></div>'
+  +'<div class="squad-editor-row"><label>Captain</label><select data-captain-id="'+esc(t.id)+'">'+opts(t.captain_id)+'</select></div>'
+  +'<div class="squad-editor-row"><label>Vice-Captain</label><select data-vc-id="'+esc(t.id)+'">'+opts(t.vice_captain_id)+'</select></div>'
+  +(squadPlayers.length?'':'<div class="muted" style="font-size:12px">Add players to this team\'s squad first (Teams tab \u2192 Manage Squad) before assigning a captain.</div>')
+  +'</div>';
+}).join(""):'<div class="empty">No teams available.</div>')+'<div class="form-actions"><button class="primary" onclick="saveTeams()">SAVE TEAM SETTINGS</button></div><hr style="border-color:var(--line);margin:18px 0"><div class="field"><label>Add New Team \u2014 Name</label><input id="newTeamName" placeholder="e.g. FC Falcons"></div><div class="form-actions"><button class="secondary" onclick="addTeam()">\uff0b ADD TEAM</button></div>'}catch(e){$("teamEditor").innerHTML='<div class="error">'+esc(e.message)+'</div>'}}
 async function addTeam(){try{const name=$("newTeamName").value.trim();if(!name)throw Error("Enter a team name.");const code=name.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6)||"TEAM"+(teams.length+1);await api("teams","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_code:code,team_name:name,status:"active"})});teams=[];await loadAll();await loadTeamEditor();showMsg("teamMsg","Team added.",true)}catch(e){showMsg("teamMsg",e.message)}}
-async function saveTeams(){try{const inputs=[...document.querySelectorAll("[data-team-id]")];for(const input of inputs)await api("teams","?id=eq."+encodeURIComponent(input.dataset.teamId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_name:input.value.trim()})});showMsg("teamMsg","Team names saved. History updated automatically.",true);teams=[];await loadAll()}catch(e){showMsg("teamMsg",e.message)}}
+async function saveTeams(){try{const inputs=[...document.querySelectorAll("[data-team-id]")];for(const input of inputs){const teamId=input.dataset.teamId;const capSel=document.querySelector('[data-captain-id="'+teamId+'"]');const vcSel=document.querySelector('[data-vc-id="'+teamId+'"]');await api("teams","?id=eq."+encodeURIComponent(teamId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_name:input.value.trim(),captain_id:capSel&&capSel.value?capSel.value:null,vice_captain_id:vcSel&&vcSel.value?vcSel.value:null})})}showMsg("teamMsg","Team settings saved. History updated automatically.",true);teams=[];await loadAll()}catch(e){showMsg("teamMsg",e.message)}}
 async function loadStatsForm(matchId){try{if(!matches.length)matches=await api("matches","?select=*&order=match_date.desc");if(!players.length)players=await api("players","?select=*&order=player_id.asc");$("statsMatch").innerHTML='<option value="">Select match</option>'+matches.map(m=>'<option value="'+m.id+'">'+esc(m.match_code)+' · '+esc(teamName(m.team_a_id,m.team_a_name))+' '+esc(scoreLine(m))+' '+esc(teamName(m.team_b_id,m.team_b_name))+'</option>').join("");$("statsPlayer").innerHTML='<option value="">Select player</option>'+players.map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.player_id)+'</option>').join("");if(matchId){$("statsMatch").value=matchId}onStatsMatchChange()}catch(e){showMsg("statsMsg",e.message)}}
 function onStatsMatchChange(){
  const m=matches.find(x=>x.id===$("statsMatch").value);
@@ -551,13 +586,16 @@ function openSquadEditor(teamId){
  const t=teams.find(x=>x.id===teamId);
  $("squadModalTitle").textContent="Manage Squad — "+(t?t.team_name:"");
  const squad=teamSquad.filter(s=>s.team_id===teamId);
- const starterMap={};squad.filter(s=>s.is_starting).forEach(s=>starterMap[s.slot]=s.player_id);
+ const starterMap={};squad.filter(s=>s.is_starting).forEach(s=>starterMap[s.slot]={player_id:s.player_id,preferred_sub_id:s.preferred_sub_id});
  const subIds=new Set(squad.filter(s=>!s.is_starting).map(s=>s.player_id));
  const assignedElsewhere=new Set(teamSquad.filter(s=>s.team_id!==teamId).map(s=>s.player_id));
  const availablePlayers=players.filter(p=>!assignedElsewhere.has(p.id));
  $("squadStarters").innerHTML=FUTSAL_SLOTS.map(slot=>{
-  const opts=['<option value="">— Empty —</option>'].concat(availablePlayers.map(p=>'<option value="'+p.id+'"'+(starterMap[slot.key]===p.id?" selected":"")+'>'+esc(p.name)+' · '+esc(p.player_id)+'</option>'));
-  return '<div class="squad-editor-row"><label>'+esc(slot.label)+'</label><select data-slot="'+slot.key+'">'+opts.join("")+'</select></div>';
+  const cur=starterMap[slot.key]||{};
+  const opts=['<option value="">— Empty —</option>'].concat(availablePlayers.map(p=>'<option value="'+p.id+'"'+(cur.player_id===p.id?" selected":"")+'>'+esc(p.name)+' · '+esc(p.player_id)+'</option>'));
+  const subOpts=['<option value="">— No preferred sub —</option>'].concat(availablePlayers.filter(p=>p.id!==cur.player_id).map(p=>'<option value="'+p.id+'"'+(cur.preferred_sub_id===p.id?" selected":"")+'>'+esc(p.name)+'</option>'));
+  return '<div class="squad-editor-row"><label>'+esc(slot.label)+'</label><select data-slot="'+slot.key+'">'+opts.join("")+'</select></div>'
+   +'<div class="squad-editor-row"><label style="font-size:11px;opacity:.7">↳ Backup</label><select data-sub-for="'+slot.key+'">'+subOpts.join("")+'</select></div>';
  }).join("");
  $("squadSubsPicker").innerHTML=availablePlayers.map(p=>'<label><input type="checkbox" value="'+p.id+'" '+(subIds.has(p.id)?"checked":"")+'> '+esc(p.name)+'</label>').join("")||'<span class="muted">No available players — add players first.</span>';
  clearMsg("squadMsg");
@@ -565,15 +603,18 @@ function openSquadEditor(teamId){
 async function saveSquad(){
  try{
   const teamId=currentSquadTeamId;
-  const starterSelects=[...document.querySelectorAll("#squadStarters select")];
-  const starters=starterSelects.map(sel=>({slot:sel.dataset.slot,player_id:sel.value})).filter(x=>x.player_id);
+  const starterSelects=[...document.querySelectorAll("#squadStarters select[data-slot]")];
+  const starters=starterSelects.map(sel=>{
+   const subSel=document.querySelector('[data-sub-for="'+sel.dataset.slot+'"]');
+   return{slot:sel.dataset.slot,player_id:sel.value,preferred_sub_id:subSel&&subSel.value?subSel.value:null};
+  }).filter(x=>x.player_id);
   const starterIds=new Set(starters.map(x=>x.player_id));
   const dup=starters.map(x=>x.player_id).filter((id,i,arr)=>arr.indexOf(id)!==i);
   if(dup.length)throw Error("A player can only be assigned to one starting slot.");
   const subIds=[...document.querySelectorAll("#squadSubsPicker input:checked")].map(i=>i.value).filter(id=>!starterIds.has(id));
   await api("team_squad","?team_id=eq."+encodeURIComponent(teamId),{method:"DELETE"});
   const rows=[
-   ...starters.map(s=>({team_id:teamId,player_id:s.player_id,is_starting:true,slot:s.slot})),
+   ...starters.map(s=>({team_id:teamId,player_id:s.player_id,is_starting:true,slot:s.slot,preferred_sub_id:s.preferred_sub_id})),
    ...subIds.map(id=>({team_id:teamId,player_id:id,is_starting:false,slot:null}))
   ];
   if(rows.length)await api("team_squad","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(rows)});
