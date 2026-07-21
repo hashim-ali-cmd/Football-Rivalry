@@ -12,8 +12,13 @@
 <title>Football Rivalry</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
-:root{--bg:#07111f;--panel:#10233b;--panel2:#0b1a2d;--yellow:#ffd447;--cyan:#25d6ff;--red:#ff5360;--green:#42e3a4;--muted:#91a0b5;--line:#ffffff18}
-*{box-sizing:border-box}body{margin:0;color:#f7f9fc;font-family:Inter,Arial,sans-serif;background:radial-gradient(circle at 5% 0%,#123762,transparent 32%),radial-gradient(circle at 95% 0%,#341b50,transparent 30%),var(--bg);min-height:100vh}
+:root{--bg:#07111f;--panel:#10233b;--panel2:#0b1a2d;--yellow:#ffd447;--cyan:#25d6ff;--red:#ff5360;--green:#42e3a4;--muted:#91a0b5;--line:#ffffff18;--text:#f7f9fc}
+html[data-theme="light"]{--bg:#eef1f7;--panel:#ffffff;--panel2:#e7ebf3;--muted:#5b6472;--line:#00000014;--text:#0a1730}
+html[data-theme="light"] .card,html[data-theme="light"] .rcard,html[data-theme="light"] .h2h-card,html[data-theme="light"] .pmp-row,html[data-theme="light"] .team-card,html[data-theme="light"] .player{background:linear-gradient(145deg,#00000008,#00000004)}
+html[data-theme="light"] .secondary{background:#00000010;color:var(--text)}
+html[data-theme="light"] .topwrap{background:#eef1f7f7}
+html[data-theme="light"] nav{background:#eef1f7fa}
+*{box-sizing:border-box}body{margin:0;color:var(--text);font-family:Inter,Arial,sans-serif;background:radial-gradient(circle at 5% 0%,#123762,transparent 32%),radial-gradient(circle at 95% 0%,#341b50,transparent 30%),var(--bg);min-height:100vh}
 .topwrap{position:sticky;top:0;z-index:20;background:#07111ff7;border-bottom:1px solid var(--line)}
 .top{height:74px;padding:0 5%;display:flex;align-items:center;justify-content:space-between;position:relative}.brand{font-weight:900;letter-spacing:-.5px}.brand span{color:var(--yellow)}nav{display:flex;gap:5px;align-items:center;position:absolute;top:0;right:5%;height:74px}button{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer}nav button{background:transparent;color:var(--muted)}.primary{background:var(--yellow);color:#07111f}.secondary{background:#ffffff12;color:white;border:1px solid var(--line)}.danger{background:#ff53601c;color:#ffb9bf;border:1px solid #ff536055}
 .wrap{width:min(1280px,92vw);margin:auto;padding:40px 0 70px}.ey{font-size:11px;letter-spacing:2px;color:var(--cyan);font-weight:900}.hero-title{font:900 clamp(58px,10vw,128px)/.82 'Barlow Condensed';letter-spacing:-4px;text-transform:uppercase;margin:12px 0}.hero-title span{color:var(--yellow)}.intro{color:var(--muted);max-width:720px;line-height:1.6}
@@ -52,6 +57,8 @@ nav button{width:100%;text-align:left;padding:16px 14px;font-size:16px}
 nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10px}
 }
 @media(max-width:600px){.hero{padding:50px 6% 40px}}
+.countdown-banner{margin:24px 0 0;padding:16px 20px;border-radius:16px;background:linear-gradient(135deg,#ffd44722,#25d6ff11);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.countdown-banner .cd-time{font:900 22px 'Barlow Condensed';color:var(--yellow)}
 .futsal-wrap{margin-top:14px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
 .futsal-pitch{width:160px;flex:none}
 .futsal-dot{fill:#0d1f38;stroke:var(--yellow);stroke-width:2}
@@ -81,8 +88,9 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div class="brand">FOOTBALL <span>RIVALRY</span></div>
 </div>
 <button class="nav-toggle" id="navToggle" onclick="document.getElementById('mainNav').classList.toggle('mobile-open')" aria-label="Menu">☰</button>
-<nav id="mainNav"><button onclick="scrollToId('matches')">Matches</button><button onclick="openPlayersModal()">Players</button><button onclick="scrollToId('teams')">Teams</button>
+<nav id="mainNav"><button onclick="toggleTheme()" id="themeToggle">🌙</button><button onclick="scrollToId('matches')">Matches</button><button onclick="openPlayersModal()">Players</button><button onclick="scrollToId('teams')">Teams</button>
 <button class="secondary super-only" style="display:none" onclick="openModal('adminsModal');loadAdminsList()">MANAGE ADMINS</button>
+<button class="secondary match-admin" style="display:none" onclick="openModal('activityLogModal');loadActivityLog()">ACTIVITY LOG</button>
 <span id="roleBadge" class="badge" style="margin-left:10px">VIEWER</span>
 <button id="loginBtn" class="secondary" onclick="openModal('loginModal')">LOGIN</button>
 <button id="logoutBtn" class="secondary" style="display:none" onclick="doLogout()">LOGOUT</button>
@@ -137,6 +145,8 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 
 <div id="errors"></div>
 
+<div id="countdownBanner"></div>
+
 <section id="matches" class="section card card-inner">
 <div class="section-title"><h2>Upcoming Match Schedule</h2><button class="secondary match-admin" style="display:none" onclick="openModal('matchModal');resetMatchForm()">＋ Match</button></div>
 <div id="upcomingRibbon" class="ribbon"><div class="loading">Loading…</div></div>
@@ -160,6 +170,16 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <section class="section card card-inner">
 <div class="section-title"><h2>Leaderboard</h2></div>
 <div id="leaders" class="leaders"><div class="loading">Calculating…</div></div>
+</section>
+
+<section class="section card card-inner">
+<div class="section-title"><h2>Team of the Month</h2></div>
+<div id="teamOfMonth"><div class="loading">Calculating…</div></div>
+</section>
+
+<section class="section card card-inner">
+<div class="section-title"><h2>Streaks &amp; Milestones</h2></div>
+<div id="streaksMilestones"><div class="loading">Calculating…</div></div>
 </section>
 
 
@@ -207,6 +227,12 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div id="teamMsg" class="msg"></div>
 </div></div>
 
+<!-- ACTIVITY LOG MODAL -->
+<div id="activityLogModal" class="modal" onclick="if(event.target===this)closeModal('activityLogModal')">
+<div class="modalbox"><div class="modalhead"><div class="modaltitle">Activity Log</div><button class="close" onclick="closeModal('activityLogModal')">×</button></div>
+<div id="activityLogList" class="players-modal-list"><div class="loading">Loading…</div></div>
+</div></div>
+
 <!-- MANAGE ADMINS MODAL -->
 <div id="adminsModal" class="modal" onclick="if(event.target===this)closeModal('adminsModal')">
 <div class="modalbox"><div class="modalhead"><div class="modaltitle">Manage Admins (max 4)</div><button class="close" onclick="closeModal('adminsModal')">×</button></div>
@@ -219,6 +245,12 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div id="adminMsg" class="msg full"></div>
 </form>
 <p class="muted" style="font-size:12px;margin-top:10px">Note: if your Supabase project has "Confirm email" enabled under Authentication settings, this admin will need to click the confirmation link in their email once before they can log in with their PIN.</p>
+</div></div>
+
+<!-- PLAYER PROFILE MODAL -->
+<div id="playerProfileModal" class="modal" onclick="if(event.target===this)closeModal('playerProfileModal')">
+<div class="modalbox"><div class="modalhead"><div class="modaltitle" id="profileTitle">Player Profile</div><button class="close" onclick="closeModal('playerProfileModal')">×</button></div>
+<div id="profileBody"></div>
 </div></div>
 
 <!-- SQUAD EDITOR MODAL -->
@@ -240,6 +272,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <button class="secondary match-admin" style="display:none" onclick="closeModal('matchReportModal');openModal('statsModal');loadStatsForm(currentReportMatchId)">＋ ADD PLAYER TO REPORT</button>
 <button class="danger super-only" style="display:none" onclick="deleteMatch()">🗑 DELETE MATCH</button>
 <button class="primary" onclick="exportMatchReportPDF()">⬇ EXPORT AS PDF</button>
+<button class="secondary" onclick="shareResultCard()">📤 SHARE RESULT CARD</button>
 </div></div></div>
 
 <!-- PLAYERS LIST MODAL -->
@@ -285,13 +318,27 @@ const SUPABASE_KEY="sb_publishable_0KQYdzfaykpsJgbFAHwBog_lHfCOw2-";
 // Once you host this on your own domain (outside a preview iframe) you can set
 // persistSession:true so admins stay logged in across page reloads.
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
-let session=null,isSuperAdmin=false,isMatchAdmin=false;
+let session=null,isSuperAdmin=false,isMatchAdmin=false,currentUserEmail=null;
+async function logActivity(action,details){
+ try{await api("activity_log","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify({actor_email:currentUserEmail,action,details})})}catch(e){/* logging failures shouldn't block the actual action */}
+}
+async function loadActivityLog(){
+ try{
+  const rows=await api("activity_log","?select=*&order=created_at.desc&limit=100");
+  $("activityLogList").innerHTML=rows.length?rows.map(r=>'<div class="pmp-row"><div class="avatar" style="background:'+avatarColor(r.actor_email||"?")+'">'+esc(initials(r.actor_email||"?"))+'</div><div style="flex:1"><div class="pmp-name">'+esc(r.action)+'</div><div class="pmp-meta">'+esc(r.actor_email||"Unknown")+' · '+esc(r.details||"")+' · '+new Date(r.created_at).toLocaleString()+'</div></div></div>').join(""):'<div class="empty">No activity logged yet.</div>';
+ }catch(e){$("activityLogList").innerHTML='<div class="error">'+esc(e.message)+' (run the activity log migration if you haven\'t yet)</div>'}
+}
 let players=[],matches=[],matchPlayers=[],teams=[],teamSquad=[];
 function authHeaders(){return session?{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token}:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}}
 
 function $(id){return document.getElementById(id)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function scrollToId(id){$(id).scrollIntoView({behavior:"smooth"})}
+function toggleTheme(){
+ const light=document.documentElement.dataset.theme==="light";
+ document.documentElement.dataset.theme=light?"":"light";
+ $("themeToggle").textContent=light?"🌙":"☀️";
+}
 function openModal(id){$(id).classList.add("show")}
 function closeModal(id){$(id).classList.remove("show")}
 function showMsg(id,text,good=false){const e=$(id);e.textContent=text;e.className="msg show "+(good?"good":"bad")}
@@ -303,6 +350,7 @@ async function loginUser(e){
   const{data,error}=await sb.auth.signInWithPassword({email,password});
   if(error)throw error;
   session=data.session;
+  currentUserEmail=(data.user&&data.user.email)||email;
   await refreshRole();
   showMsg("loginMsg","Logged in.",true);
   setTimeout(()=>closeModal("loginModal"),400);
@@ -310,7 +358,7 @@ async function loginUser(e){
 }
 async function doLogout(){
  await sb.auth.signOut();
- session=null;isSuperAdmin=false;isMatchAdmin=false;
+ session=null;isSuperAdmin=false;isMatchAdmin=false;currentUserEmail=null;
  updateUIForRole();
 }
 async function refreshRole(){
@@ -352,9 +400,19 @@ async function loadAll(){
  render();
 }
 function render(){
- renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();
+ renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();
  if($("playersListModal").classList.contains("show"))renderPlayersModal();
 }
+function renderCountdown(){
+ const now=new Date();
+ const next=matches.filter(m=>matchDateTime(m)>=now).sort((a,b)=>matchDateTime(a)-matchDateTime(b))[0];
+ if(!next){$("countdownBanner").innerHTML="";return}
+ const diff=matchDateTime(next)-now;
+ const h=Math.floor(diff/3600000),mi=Math.floor((diff%3600000)/60000);
+ const label=diff<=0?"Kicking off now":(h>0?h+"h "+mi+"m":mi+"m")+" until kickoff";
+ $("countdownBanner").innerHTML='<div class="countdown-banner"><div>⏱ <strong>'+esc(next.match_code)+'</strong> — '+esc(teamName(next.team_a_id,next.team_a_name))+' vs '+esc(teamName(next.team_b_id,next.team_b_name))+'</div><div class="cd-time">'+label+'</div></div>';
+}
+setInterval(()=>{if(matches.length)renderCountdown()},30000);
 const AVATAR_COLORS=["#ffd447","#25d6ff","#ff5360","#42e3a4","#c084fc","#fb923c"];
 function initials(name){return String(name||"?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase()}
 function avatarColor(seed){let h=0;for(const c of String(seed))h=(h*31+c.charCodeAt(0))>>>0;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
@@ -414,9 +472,27 @@ async function openEnterScore(matchId){
  const b=prompt(teamName(m.team_b_id,m.team_b_name)+" score:",hasScore(m)?m.team_b_score:"0");
  if(b===null)return;
  if(!/^\d+$/.test(a)||!/^\d+$/.test(b)){alert("Enter whole numbers for both scores.");return}
- try{await api("matches","?id=eq."+encodeURIComponent(matchId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_a_score:Number(a),team_b_score:Number(b)})});await loadAll();if(currentReportMatchId===matchId)openMatchReport(matchId)}catch(err){alert("Could not save score: "+err.message)}
+ try{await api("matches","?id=eq."+encodeURIComponent(matchId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_a_score:Number(a),team_b_score:Number(b)})});logActivity("Enter Score",m.match_code+": "+a+"-"+b);await loadAll();if(currentReportMatchId===matchId)openMatchReport(matchId)}catch(err){alert("Could not save score: "+err.message)}
 }
 let playerFilter="All";
+function openPlayerProfile(playerId){
+ const p=players.find(x=>x.id===playerId);if(!p)return;
+ const rows=matchPlayers.filter(mp=>mp.player_id===playerId).map(mp=>({...mp,match:matches.find(m=>m.id===mp.match_id)})).filter(r=>r.match).sort((a,b)=>new Date(a.match.match_date)-new Date(b.match.match_date));
+ const totalGoals=rows.reduce((s,r)=>s+Number(r.goals||0),0);
+ const totalAssists=rows.reduce((s,r)=>s+Number(r.assists||0),0);
+ const cleanSheets=rows.filter(r=>r.clean_sheet).length;
+ $("profileTitle").textContent=p.name;
+ const maxG=Math.max(1,...rows.map(r=>Number(r.goals||0)));
+ const barW=Math.min(36,Math.max(14,280/Math.max(1,rows.length)));
+ const chart=rows.length?'<svg viewBox="0 0 '+(rows.length*barW+10)+' 90" style="width:100%;max-width:'+(rows.length*barW+10)+'px;height:90px" xmlns="http://www.w3.org/2000/svg">'
+  +rows.map((r,i)=>{const h=Math.round((Number(r.goals||0)/maxG)*60);return '<g><rect x="'+(i*barW+4)+'" y="'+(70-h)+'" width="'+(barW-8)+'" height="'+h+'" rx="3" fill="var(--yellow)"/><text x="'+(i*barW+barW/2)+'" y="86" style="font-size:8px;fill:var(--muted);text-anchor:middle">'+esc(r.match.match_code.replace(/^MD-?0*/,""))+'</text><text x="'+(i*barW+barW/2)+'" y="'+(64-h)+'" style="font-size:9px;font-weight:800;fill:var(--text);text-anchor:middle">'+r.goals+'</text></g>'}).join("")
+  +'</svg>'
+  :'<div class="empty">No match appearances logged yet.</div>';
+ $("profileBody").innerHTML='<div style="display:flex;gap:14px;align-items:center;margin-bottom:16px"><div class="avatar" style="width:56px;height:56px;font-size:20px;background:'+avatarColor(p.id)+'">'+esc(initials(p.name))+'</div><div><div style="font-weight:800;font-size:18px">'+esc(p.name)+(p.nickname?' <span class="muted">"'+esc(p.nickname)+'"</span>':"")+'</div><div class="muted">ID '+esc(p.player_id)+' · '+esc(p.position||"Position not set")+' · '+esc(p.status)+'</div></div></div>'
+  +'<div class="leaders" style="margin-bottom:18px"><div class="leader"><div>⚽</div><div class="leader-label">GOALS</div><div class="leader-name">'+totalGoals+'</div></div><div class="leader"><div>🎯</div><div class="leader-label">ASSISTS</div><div class="leader-name">'+totalAssists+'</div></div><div class="leader"><div>🧤</div><div class="leader-label">CLEAN SHEETS</div><div class="leader-name">'+cleanSheets+'</div></div></div>'
+  +'<h4 style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Goals per Match</h4>'+chart;
+ openModal("playerProfileModal");
+}
 function openPlayersModal(){openModal("playersListModal");if(!players.length){api("players","?select=*&order=player_id.asc").then(r=>{players=r;renderPlayersModal()}).catch(e=>{$("playersModalList").innerHTML='<div class="error">'+esc(e.message)+'</div>'})}else renderPlayersModal()}
 function setPlayerFilter(f){playerFilter=f;renderPlayersModal()}
 function renderPlayersModal(){
@@ -426,7 +502,7 @@ function renderPlayersModal(){
  const stats={};players.forEach(p=>stats[p.id]={goals:0,assists:0,apps:0});
  matchPlayers.forEach(mp=>{if(stats[mp.player_id]){stats[mp.player_id].goals+=Number(mp.goals||0);stats[mp.player_id].assists+=Number(mp.assists||0);stats[mp.player_id].apps++}});
  const list=playerFilter==="All"?players:players.filter(p=>p.position===playerFilter);
- $("playersModalList").innerHTML=list.length?list.map(p=>{const s=stats[p.id]||{goals:0,assists:0,apps:0};return'<div class="pmp-row"><div class="avatar" style="background:'+avatarColor(p.id)+'">'+esc(initials(p.name))+'</div><div style="flex:1"><div class="pmp-name">'+esc(p.name)+(p.nickname?' <span class="muted">"'+esc(p.nickname)+'"</span>':"")+'</div><div class="pmp-meta">ID: '+esc(p.player_id)+' · '+esc(p.position||"Position not set")+' · '+esc(p.status)+' · '+s.goals+'G '+s.assists+'A '+s.apps+' apps</div></div>'+(isSuperAdmin?'<button class="secondary" onclick="editPlayer(\''+p.id+'\')">Edit</button>':"")+'</div>'}).join(""):'<div class="empty">No players in this category.</div>';
+ $("playersModalList").innerHTML=list.length?list.map(p=>{const s=stats[p.id]||{goals:0,assists:0,apps:0};return'<div class="pmp-row" style="cursor:pointer" onclick="openPlayerProfile(\''+p.id+'\')"><div class="avatar" style="background:'+avatarColor(p.id)+'">'+esc(initials(p.name))+'</div><div style="flex:1"><div class="pmp-name">'+esc(p.name)+(p.nickname?' <span class="muted">"'+esc(p.nickname)+'"</span>':"")+'</div><div class="pmp-meta">ID: '+esc(p.player_id)+' · '+esc(p.position||"Position not set")+' · '+esc(p.status)+' · '+s.goals+'G '+s.assists+'A '+s.apps+' apps</div></div>'+(isSuperAdmin?'<button class="secondary" onclick="event.stopPropagation();editPlayer(\''+p.id+'\')">Edit</button>':"")+'</div>'}).join(""):'<div class="empty">No players in this category.</div>';
 }
 const FUTSAL_SLOTS=[
  {key:"GK",label:"GK",x:80,y:290},
@@ -481,10 +557,60 @@ function renderLeaders(){
  matchPlayers.forEach(mp=>{if(stats[mp.player_id]){stats[mp.player_id].goals+=Number(mp.goals||0);stats[mp.player_id].assists+=Number(mp.assists||0);stats[mp.player_id].apps++;if(mp.clean_sheet)stats[mp.player_id].clean++}});
  const a=Object.values(stats),best=k=>[...a].sort((x,y)=>y[k]-x[k])[0],g=best("goals"),as=best("assists"),k=best("clean");
  $("leaders").innerHTML='<div class="leader"><div>⚽</div><div class="leader-label">TOP SCORER</div><div class="leader-name">'+esc(g?.name||"—")+'</div><div class="muted">'+(g?.goals||0)+' goals</div></div><div class="leader"><div>🎯</div><div class="leader-label">TOP ASSISTS</div><div class="leader-name">'+esc(as?.name||"—")+'</div><div class="muted">'+(as?.assists||0)+' assists</div></div><div class="leader"><div>🧤</div><div class="leader-label">BEST KEEPER</div><div class="leader-name">'+esc(k?.name||"—")+'</div><div class="muted">'+(k?.clean||0)+' clean sheets</div></div>';
+ renderTeamOfMonth();
+}
+function renderTeamOfMonth(){
+ const now=new Date();
+ const monthMatches=matches.filter(m=>{
+  const d=new Date(m.match_date);
+  return hasScore(m)&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
+ });
+ if(!monthMatches.length){$("teamOfMonth").innerHTML='<div class="empty">No finalized matches yet this month.</div>';return}
+ const record={};
+ const bump=(id,name,w,d,l,gf,ga)=>{if(!id)return;if(!record[id])record[id]={name,w:0,d:0,l:0,gf:0,ga:0};record[id].w+=w;record[id].d+=d;record[id].l+=l;record[id].gf+=gf;record[id].ga+=ga};
+ monthMatches.forEach(m=>{
+  const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
+  const sa=Number(m.team_a_score),sb=Number(m.team_b_score);
+  if(sa>sb){bump(m.team_a_id,nameA,1,0,0,sa,sb);bump(m.team_b_id,nameB,0,0,1,sb,sa)}
+  else if(sb>sa){bump(m.team_b_id,nameB,1,0,0,sb,sa);bump(m.team_a_id,nameA,0,0,1,sa,sb)}
+  else{bump(m.team_a_id,nameA,0,1,0,sa,sb);bump(m.team_b_id,nameB,0,1,0,sb,sa)}
+ });
+ const ranked=Object.values(record).sort((x,y)=>(y.w*3+y.d)-(x.w*3+x.d)||((y.gf-y.ga)-(x.gf-x.ga)));
+ const top=ranked[0];
+ $("teamOfMonth").innerHTML='<div class="h2h-card"><div style="font-size:38px">🏆</div><div><div class="tn" style="font-size:26px">'+esc(top.name)+'</div><div class="muted">'+top.w+'W '+top.d+'D '+top.l+'L · GD '+(top.gf-top.ga>=0?"+":"")+(top.gf-top.ga)+' this month</div></div></div>';
+}
+function renderStreaksAndMilestones(){
+ const now=new Date();
+ const played=matches.filter(m=>matchDateTime(m)<now&&hasScore(m)).sort((a,b)=>matchDateTime(b)-matchDateTime(a));
+ const badges=[];
+ // Team win streaks
+ teams.forEach(t=>{
+  const teamMatches=played.filter(m=>m.team_a_id===t.id||m.team_b_id===t.id);
+  let streak=0;
+  for(const m of teamMatches){
+   const isA=m.team_a_id===t.id;
+   const my=isA?m.team_a_score:m.team_b_score,opp=isA?m.team_b_score:m.team_a_score;
+   if(my>opp)streak++;else break;
+  }
+  if(streak>=2)badges.push('<div class="sub-chip">🔥 '+esc(t.team_name)+' — '+streak+'-match win streak</div>');
+ });
+ // Goal milestones
+ const totals={};matchPlayers.forEach(mp=>{totals[mp.player_id]=(totals[mp.player_id]||0)+Number(mp.goals||0)});
+ const tiers=[100,50,25,10];
+ Object.entries(totals).forEach(([pid,goals])=>{
+  const tier=tiers.find(t=>goals>=t);
+  if(tier){const p=players.find(x=>x.id===pid);if(p)badges.push('<div class="sub-chip">🎯 '+esc(p.name)+' — '+goals+' career goals ('+tier+'+ club)</div>')}
+ });
+ // Hat-tricks
+ matchPlayers.filter(mp=>Number(mp.goals||0)>=3).forEach(mp=>{
+  const p=players.find(x=>x.id===mp.player_id),m=matches.find(x=>x.id===mp.match_id);
+  if(p&&m)badges.push('<div class="sub-chip">🎩 Hat-trick — '+esc(p.name)+' ('+mp.goals+' goals, '+esc(m.match_code)+')</div>');
+ });
+ $("streaksMilestones").innerHTML=badges.length?badges.join(""):'<div class="empty">No streaks or milestones yet — check back after a few matches.</div>';
 }
 function resetPlayerForm(){$("playerModalTitle").textContent="Add Player";$("playerRowId").value="";$("playerId").value="";$("playerName").value="";$("playerNickname").value="";$("playerPosition").value="";$("playerStatus").value="active";clearMsg("playerMsg")}
 function editPlayer(id){const p=players.find(x=>x.id===id);if(!p)return;openModal("playerModal");$("playerModalTitle").textContent="Edit Player";$("playerRowId").value=p.id;$("playerId").value=p.player_id||"";$("playerName").value=p.name||"";$("playerNickname").value=p.nickname||"";$("playerPosition").value=p.position||"";$("playerStatus").value=p.status||"active";clearMsg("playerMsg")}
-async function savePlayer(e){e.preventDefault();try{const id=$("playerRowId").value;const body={player_id:$("playerId").value.trim(),name:$("playerName").value.trim(),nickname:$("playerNickname").value.trim()||null,position:$("playerPosition").value||null,status:$("playerStatus").value};if(id)await api("players","?id=eq."+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});else await api("players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("playerMsg","Player saved.",true);await loadAll();setTimeout(()=>closeModal("playerModal"),500)}catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("playerMsg",dup?"That Player ID is already in use by another player. Please choose a different ID.":e.message)}}
+async function savePlayer(e){e.preventDefault();try{const id=$("playerRowId").value;const body={player_id:$("playerId").value.trim(),name:$("playerName").value.trim(),nickname:$("playerNickname").value.trim()||null,position:$("playerPosition").value||null,status:$("playerStatus").value};if(id)await api("players","?id=eq."+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});else await api("players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("playerMsg","Player saved.",true);logActivity(id?"Edit Player":"Add Player",body.name+" ("+body.player_id+")");await loadAll();setTimeout(()=>closeModal("playerModal"),500)}catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("playerMsg",dup?"That Player ID is already in use by another player. Please choose a different ID.":e.message)}}
 function suggestMatchCode(){
  const nums=matches.map(m=>{const mm=String(m.match_code||"").match(/(\d+)\s*$/);return mm?parseInt(mm[1],10):0});
  const next=(nums.length?Math.max(...nums):0)+1;
@@ -492,7 +618,7 @@ function suggestMatchCode(){
 }
 function resetMatchForm(){ $("matchCode").value=suggestMatchCode();$("matchDate").value=new Date().toISOString().slice(0,10);$("kickoff").value="";$("matchEnd").value="";$("location").value="";clearMsg("matchMsg");loadTeamSelects()}
 async function loadTeamSelects(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at,captain_id,vice_captain_id&order=team_name.asc");const o='<option value="">Select team</option>'+teams.map(t=>'<option value="'+t.id+'">'+esc(t.team_name)+'</option>').join("");$("teamA").innerHTML=o;$("teamB").innerHTML=o}catch(e){showMsg("matchMsg",e.message)}}
-async function saveMatch(e){e.preventDefault();try{if($("teamA").value===$("teamB").value)throw Error("Team A and Team B must be different.");const teamAId=$("teamA").value,teamBId=$("teamB").value;const body={match_code:$("matchCode").value.trim(),match_date:$("matchDate").value,kickoff_time:$("kickoff").value||null,end_time:$("matchEnd").value||null,location:$("location").value.trim()||null,team_a_id:teamAId,team_b_id:teamBId,team_a_name:teamName(teamAId),team_b_name:teamName(teamBId),team_a_score:null,team_b_score:null};await api("matches","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("matchMsg","Match scheduled.",true);await loadAll();setTimeout(()=>closeModal("matchModal"),500)}catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("matchMsg",dup?"That match code is already used. Try "+suggestMatchCode()+" or pick another.":e.message)}}
+async function saveMatch(e){e.preventDefault();try{if($("teamA").value===$("teamB").value)throw Error("Team A and Team B must be different.");const teamAId=$("teamA").value,teamBId=$("teamB").value;const body={match_code:$("matchCode").value.trim(),match_date:$("matchDate").value,kickoff_time:$("kickoff").value||null,end_time:$("matchEnd").value||null,location:$("location").value.trim()||null,team_a_id:teamAId,team_b_id:teamBId,team_a_name:teamName(teamAId),team_b_name:teamName(teamBId),team_a_score:null,team_b_score:null};await api("matches","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("matchMsg","Match scheduled.",true);logActivity("Schedule Match",body.match_code+": "+teamName(teamAId)+" vs "+teamName(teamBId));await loadAll();setTimeout(()=>closeModal("matchModal"),500)}catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("matchMsg",dup?"That match code is already used. Try "+suggestMatchCode()+" or pick another.":e.message)}}
 async function loadTeamEditor(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at,captain_id,vice_captain_id&order=team_name.asc");$("teamEditor").innerHTML=(teams.length?teams.map(t=>{
  const squadPlayers=teamSquad.filter(s=>s.team_id===t.id).map(s=>players.find(p=>p.id===s.player_id)).filter(Boolean);
  const opts=(selectedId)=>'<option value="">\u2014 None \u2014</option>'+squadPlayers.map(p=>'<option value="'+p.id+'"'+(selectedId===p.id?" selected":"")+'>'+esc(p.name)+'</option>').join("");
@@ -502,14 +628,14 @@ async function loadTeamEditor(){try{if(!teams.length)teams=await api("teams","?s
   +(squadPlayers.length?'':'<div class="muted" style="font-size:12px">Add players to this team\'s squad first (Teams tab \u2192 Manage Squad) before assigning a captain.</div>')
   +'</div>';
 }).join(""):'<div class="empty">No teams available.</div>')+'<div class="form-actions"><button class="primary" onclick="saveTeams()">SAVE TEAM SETTINGS</button></div><hr style="border-color:var(--line);margin:18px 0"><div class="field"><label>Add New Team \u2014 Name</label><input id="newTeamName" placeholder="e.g. FC Falcons"></div><div class="form-actions"><button class="secondary" onclick="addTeam()">\uff0b ADD TEAM</button></div>'}catch(e){$("teamEditor").innerHTML='<div class="error">'+esc(e.message)+'</div>'}}
-async function addTeam(){try{const name=$("newTeamName").value.trim();if(!name)throw Error("Enter a team name.");const code=name.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6)||"TEAM"+(teams.length+1);await api("teams","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_code:code,team_name:name,status:"active"})});teams=[];await loadAll();await loadTeamEditor();showMsg("teamMsg","Team added.",true)}catch(e){showMsg("teamMsg",e.message)}}
-async function saveTeams(){try{const inputs=[...document.querySelectorAll("[data-team-id]")];for(const input of inputs){const teamId=input.dataset.teamId;const capSel=document.querySelector('[data-captain-id="'+teamId+'"]');const vcSel=document.querySelector('[data-vc-id="'+teamId+'"]');await api("teams","?id=eq."+encodeURIComponent(teamId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_name:input.value.trim(),captain_id:capSel&&capSel.value?capSel.value:null,vice_captain_id:vcSel&&vcSel.value?vcSel.value:null})})}showMsg("teamMsg","Team settings saved. History updated automatically.",true);teams=[];await loadAll()}catch(e){showMsg("teamMsg",e.message)}}
+async function addTeam(){try{const name=$("newTeamName").value.trim();if(!name)throw Error("Enter a team name.");const code=name.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6)||"TEAM"+(teams.length+1);await api("teams","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_code:code,team_name:name,status:"active"})});teams=[];await loadAll();await loadTeamEditor();showMsg("teamMsg","Team added.",true);logActivity("Add Team",name)}catch(e){showMsg("teamMsg",e.message)}}
+async function saveTeams(){try{const inputs=[...document.querySelectorAll("[data-team-id]")];for(const input of inputs){const teamId=input.dataset.teamId;const capSel=document.querySelector('[data-captain-id="'+teamId+'"]');const vcSel=document.querySelector('[data-vc-id="'+teamId+'"]');await api("teams","?id=eq."+encodeURIComponent(teamId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_name:input.value.trim(),captain_id:capSel&&capSel.value?capSel.value:null,vice_captain_id:vcSel&&vcSel.value?vcSel.value:null})})}showMsg("teamMsg","Team settings saved. History updated automatically.",true);logActivity("Edit Teams","Updated team names/captains");teams=[];await loadAll()}catch(e){showMsg("teamMsg",e.message)}}
 async function loadStatsForm(matchId){try{if(!matches.length)matches=await api("matches","?select=*&order=match_date.desc");if(!players.length)players=await api("players","?select=*&order=player_id.asc");$("statsMatch").innerHTML='<option value="">Select match</option>'+matches.map(m=>'<option value="'+m.id+'">'+esc(m.match_code)+' · '+esc(teamName(m.team_a_id,m.team_a_name))+' '+esc(scoreLine(m))+' '+esc(teamName(m.team_b_id,m.team_b_name))+'</option>').join("");$("statsPlayer").innerHTML='<option value="">Select player</option>'+players.map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.player_id)+'</option>').join("");if(matchId){$("statsMatch").value=matchId}onStatsMatchChange()}catch(e){showMsg("statsMsg",e.message)}}
 function onStatsMatchChange(){
  const m=matches.find(x=>x.id===$("statsMatch").value);
  $("statsTeam").innerHTML=m?'<option value="">Select team</option><option value="'+(m.team_a_id||"")+'" data-name="'+esc(teamName(m.team_a_id,m.team_a_name))+'">'+esc(teamName(m.team_a_id,m.team_a_name))+'</option><option value="'+(m.team_b_id||"")+'" data-name="'+esc(teamName(m.team_b_id,m.team_b_name))+'">'+esc(teamName(m.team_b_id,m.team_b_name))+'</option>':'<option value="">Select match first</option>';
 }
-async function saveStats(e){e.preventDefault();try{const teamOpt=$("statsTeam").selectedOptions[0];const body={match_id:$("statsMatch").value,player_id:$("statsPlayer").value,team_id:$("statsTeam").value||null,team_name:teamOpt?teamOpt.dataset.name:"",is_goalkeeper:$("statsKeeper").value==="true",goals:Number($("statsGoals").value||0),assists:Number($("statsAssists").value||0),clean_sheet:$("statsClean").value==="true"};await api("match_players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("statsMsg","Statistics saved.",true);await loadAll();setTimeout(()=>closeModal("statsModal"),500)}catch(e){showMsg("statsMsg",e.message)}}
+async function saveStats(e){e.preventDefault();try{const teamOpt=$("statsTeam").selectedOptions[0];const body={match_id:$("statsMatch").value,player_id:$("statsPlayer").value,team_id:$("statsTeam").value||null,team_name:teamOpt?teamOpt.dataset.name:"",is_goalkeeper:$("statsKeeper").value==="true",goals:Number($("statsGoals").value||0),assists:Number($("statsAssists").value||0),clean_sheet:$("statsClean").value==="true"};await api("match_players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("statsMsg","Statistics saved.",true);logActivity("Add Match Stats",(players.find(p=>p.id===body.player_id)||{}).name+" in match "+body.match_id);await loadAll();setTimeout(()=>closeModal("statsModal"),500)}catch(e){showMsg("statsMsg",e.message)}}
 let currentReportMatchId=null;
 async function deleteMatch(){
  if(!currentReportMatchId)return;
@@ -518,6 +644,7 @@ async function deleteMatch(){
  try{
   await api("match_players","?match_id=eq."+encodeURIComponent(currentReportMatchId),{method:"DELETE"});
   await api("matches","?id=eq."+encodeURIComponent(currentReportMatchId),{method:"DELETE"});
+  logActivity("Delete Match",m?m.match_code:currentReportMatchId);
   closeModal("matchReportModal");
   currentReportMatchId=null;
   await loadAll();
@@ -565,6 +692,54 @@ function exportMatchReportPDF(){
  });
  doc.save((m.match_code||"match")+"_report.pdf");
 }
+function shareResultCard(){
+ const m=matches.find(x=>x.id===currentReportMatchId);
+ if(!m)return;
+ if(!hasScore(m)){alert("Enter the final score before sharing a result card.");return}
+ const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
+ const rows=matchPlayers.filter(mp=>mp.match_id===currentReportMatchId);
+ const top=[...rows].sort((a,b)=>Number(b.goals||0)-Number(a.goals||0))[0];
+ const topPlayer=top&&Number(top.goals||0)>0?players.find(p=>p.id===top.player_id):null;
+ const canvas=document.createElement("canvas");
+ canvas.width=1000;canvas.height=1000;
+ const ctx=canvas.getContext("2d");
+ const grad=ctx.createLinearGradient(0,0,1000,1000);
+ grad.addColorStop(0,"#0d1f38");grad.addColorStop(0.6,"#0a1730");grad.addColorStop(1,"#1a1140");
+ ctx.fillStyle=grad;ctx.fillRect(0,0,1000,1000);
+ ctx.fillStyle="#ffd447";ctx.font="900 40px Arial";ctx.textAlign="center";
+ ctx.fillText("FOOTBALL RIVALRY",500,110);
+ ctx.fillStyle="#91a0b5";ctx.font="600 26px Arial";
+ ctx.fillText(m.match_code+"  ·  "+m.match_date,500,160);
+ ctx.fillStyle="#ffffff";ctx.font="800 54px Arial";
+ wrapCenterText(ctx,nameA,500,320,900);
+ ctx.fillStyle="#ffd447";ctx.font="900 160px Arial";
+ ctx.fillText(m.team_a_score+"  —  "+m.team_b_score,500,480);
+ ctx.fillStyle="#ffffff";ctx.font="800 54px Arial";
+ wrapCenterText(ctx,nameB,500,580,900);
+ if(topPlayer){
+  ctx.fillStyle="#25d6ff";ctx.font="700 30px Arial";
+  ctx.fillText("⭐ "+topPlayer.name+" — "+top.goals+" goal"+(top.goals>1?"s":""),500,700);
+ }
+ ctx.fillStyle="#5b6472";ctx.font="500 22px Arial";
+ ctx.fillText(m.location||"",500,900);
+ canvas.toBlob(blob=>{
+  const file=new File([blob],(m.match_code||"match")+"_result.png",{type:"image/png"});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+   navigator.share({files:[file],title:"Football Rivalry Result",text:nameA+" "+m.team_a_score+"-"+m.team_b_score+" "+nameB}).catch(()=>{});
+  }else{
+   const url=URL.createObjectURL(blob);
+   const a=document.createElement("a");a.href=url;a.download=file.name;a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }
+ },"image/png");
+}
+function wrapCenterText(ctx,text,x,y,maxWidth){
+ if(ctx.measureText(text).width<=maxWidth){ctx.fillText(text,x,y);return}
+ const words=text.split(" ");let line="";const lines=[];
+ words.forEach(w=>{const test=line?line+" "+w:w;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=w}else line=test});
+ if(line)lines.push(line);
+ lines.forEach((l,i)=>ctx.fillText(l,x,y+i*58-((lines.length-1)*29)));
+}
 async function loadAdminsList(){
  try{
   const{data,error}=await sb.rpc("list_admins");
@@ -573,11 +748,11 @@ async function loadAdminsList(){
  }catch(err){$("adminsList").innerHTML='<div class="error">'+esc(err.message)+'</div>'}
 }
 async function toggleAdminActive(userId,active){
- try{const{error}=await sb.rpc("set_admin_active",{target_user_id:userId,active});if(error)throw error;await loadAdminsList()}catch(err){alert(err.message)}
+ try{const{error}=await sb.rpc("set_admin_active",{target_user_id:userId,active});if(error)throw error;logActivity(active?"Reactivate Admin":"Deactivate Admin",userId);await loadAdminsList()}catch(err){alert(err.message)}
 }
 async function deleteAdminCredentials(userId,email){
  if(!confirm("Permanently delete login credentials for "+email+"? This removes their account entirely and cannot be undone."))return;
- try{const{error}=await sb.rpc("delete_admin_credentials",{target_user_id:userId});if(error)throw error;await loadAdminsList()}catch(err){alert(err.message)}
+ try{const{error}=await sb.rpc("delete_admin_credentials",{target_user_id:userId});if(error)throw error;logActivity("Delete Admin Credentials",email);await loadAdminsList()}catch(err){alert(err.message)}
 }
 async function sha256Hex(str){const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));return[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("")}
 let currentSquadTeamId=null;
@@ -619,6 +794,7 @@ async function saveSquad(){
   ];
   if(rows.length)await api("team_squad","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(rows)});
   showMsg("squadMsg","Squad saved.",true);
+  logActivity("Update Squad",(teams.find(t=>t.id===teamId)||{}).team_name||teamId);
   await loadAll();
   setTimeout(()=>closeModal("squadModal"),500);
  }catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("squadMsg",dup?"One of these players is already assigned to another team's squad.":e.message)}
@@ -640,7 +816,7 @@ async function addAdminUser(e){
    const pinHash=await sha256Hex(pin);
    await api("admin_whitelist","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({email,pin_hash:pinHash,is_active:true})});
   }catch(werr){/* whitelist record is just bookkeeping; don't fail the whole flow over it */}
-  showMsg("adminMsg","Admin added. Share the email + PIN with them securely.",true);
+  showMsg("adminMsg","Admin added. Share the email + PIN with them securely.",true);logActivity("Add Admin",email);
   $("addAdminForm").reset();
   await loadAdminsList();
  }catch(err){showMsg("adminMsg",err.message)}
