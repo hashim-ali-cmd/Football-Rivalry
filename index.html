@@ -18,6 +18,11 @@ html[data-theme="light"] .card,html[data-theme="light"] .rcard,html[data-theme="
 html[data-theme="light"] .secondary{background:#00000010;color:var(--text)}
 html[data-theme="light"] .topwrap{background:#eef1f7f7}
 html[data-theme="light"] nav{background:#eef1f7fa}
+html[data-theme="light"] .close{background:#00000010;color:var(--text)}
+html[data-theme="light"] .nav-toggle{color:var(--text)}
+html[data-theme="light"] .field input,html[data-theme="light"] .field select,html[data-theme="light"] .squad-editor-row select{background:#ffffff;color:var(--text);border-color:#00000022}
+html[data-theme="light"] .stats strong{color:var(--text)}
+html[data-theme="light"] .modal{background:#eef1f7d9}
 *{box-sizing:border-box}body{margin:0;color:var(--text);font-family:Inter,Arial,sans-serif;background:radial-gradient(circle at 5% 0%,#123762,transparent 32%),radial-gradient(circle at 95% 0%,#341b50,transparent 30%),var(--bg);min-height:100vh}
 .topwrap{position:sticky;top:0;z-index:20;background:#07111ff7;border-bottom:1px solid var(--line)}
 .top{height:74px;padding:0 5%;display:flex;align-items:center;justify-content:space-between;position:relative}.brand{font-weight:900;letter-spacing:-.5px}.brand span{color:var(--yellow)}nav{display:flex;gap:5px;align-items:center;position:absolute;top:0;right:5%;height:74px}button{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer}nav button{background:transparent;color:var(--muted)}.primary{background:var(--yellow);color:#07111f}.secondary{background:#ffffff12;color:white;border:1px solid var(--line)}.danger{background:#ff53601c;color:#ffb9bf;border:1px solid #ff536055}
@@ -33,6 +38,15 @@ html[data-theme="light"] nav{background:#eef1f7fa}
 .hero-streak{position:absolute;z-index:0;background:linear-gradient(90deg,transparent,#ffd44720,transparent);height:160%;width:220px;top:-30%}
 .hero-figs{position:absolute;inset:0;z-index:1;opacity:.9;pointer-events:none}
 .hero-copy{position:relative;z-index:2}.hero-logo{width:60px;height:60px;margin-bottom:20px}
+.hero-eyebrow{font:800 11px Inter;letter-spacing:3px;color:var(--cyan);margin-bottom:10px}
+.hero-glow{position:absolute;top:-40%;right:5%;width:340px;height:340px;background:radial-gradient(circle,#ffd44722,transparent 70%);z-index:0;pointer-events:none;animation:heroPulse 6s ease-in-out infinite}
+@keyframes heroPulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
+.hero-ball{position:absolute;width:52px;height:52px;top:18%;right:12%;z-index:1;animation:heroFloat 5s ease-in-out infinite}
+@keyframes heroFloat{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-16px) rotate(25deg)}}
+.hero-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.hero-stats .hs-chip{background:#ffffff0e;border:1px solid var(--line);border-radius:99px;padding:9px 16px;font-size:12px;font-weight:700;color:var(--text)}
+.hero-stats .hs-chip strong{color:var(--yellow)}
+@media(max-width:600px){.hero-ball{display:none}}
 .ribbon{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 14px;scrollbar-width:thin}
 .ribbon::-webkit-scrollbar{height:6px}.ribbon::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:99px}
 .rcard{min-width:230px;flex:none;background:linear-gradient(145deg,#ffffff10,#ffffff06);border:1px solid var(--line);border-radius:16px;padding:16px}
@@ -61,6 +75,11 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 .countdown-banner .cd-time{font:900 22px 'Barlow Condensed';color:var(--yellow)}
 .futsal-wrap{margin-top:14px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
 .futsal-pitch{width:160px;flex:none}
+@media(max-width:560px){
+.futsal-wrap{flex-direction:column;align-items:center;text-align:center}
+.futsal-pitch{width:min(240px,80vw)}
+.squad-subs{width:100%;text-align:left}
+}
 .futsal-dot{fill:#0d1f38;stroke:var(--yellow);stroke-width:2}
 .futsal-dot.empty{stroke:#ffffff33;stroke-dasharray:3 3}
 .futsal-label{font-size:8px;fill:var(--muted);text-anchor:middle}
@@ -103,6 +122,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div class="hero-dots"></div>
 <div class="hero-streak" style="left:8%"></div>
 <div class="hero-streak" style="left:60%;width:140px"></div>
+<div class="hero-glow"></div>
 <svg class="hero-figs" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
 <circle cx="980" cy="140" r="160" fill="#25d6ff0d"/>
 <circle cx="1080" cy="300" r="90" fill="#ffd4470d"/>
@@ -125,6 +145,10 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <path d="M755 270 Q725 300 700 335 L715 345 Q745 315 768 285Z"/>
 </g>
 </svg>
+<svg class="hero-ball" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+<circle cx="22" cy="22" r="20" fill="#0d1f38" stroke="#ffffff33" stroke-width="1.5"/>
+<path d="M22 8 L30 14 L27 24 L17 24 L14 14 Z" fill="#ffffff22" stroke="#ffffff33" stroke-width="1"/>
+</svg>
 <div class="hero-copy">
 <svg class="hero-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
 <path d="M24 2 L44 10 V24 C44 36 36 44 24 46 C12 44 4 36 4 24 V10 Z" fill="#10233b" stroke="#ffd447" stroke-width="2"/>
@@ -132,7 +156,9 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <path d="M24 14 L28 18 L26.5 23 L21.5 23 L20 18 Z" fill="#ffd447"/>
 <path d="M17 32 L31 32 L28 40 L20 40 Z" fill="#ffd447" opacity=".85"/>
 </svg>
+<div class="hero-eyebrow">FUTSAL RIVALRY · WEEKLY MATCHDAY</div>
 <div class="hero-title">Where every<br><span>match matters.</span></div>
+<div id="heroStats" class="hero-stats"></div>
 </div>
 </section>
 
@@ -400,8 +426,18 @@ async function loadAll(){
  render();
 }
 function render(){
- renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();
+ renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();renderHeroStats();
  if($("playersListModal").classList.contains("show"))renderPlayersModal();
+}
+function renderHeroStats(){
+ const played=matches.filter(m=>hasScore(m)).length;
+ const totalGoals=matchPlayers.reduce((s,mp)=>s+Number(mp.goals||0),0);
+ $("heroStats").innerHTML=[
+  '<span class="hs-chip"><strong>'+teams.length+'</strong> Teams</span>',
+  '<span class="hs-chip"><strong>'+players.length+'</strong> Players</span>',
+  '<span class="hs-chip"><strong>'+played+'</strong> Matches Played</span>',
+  '<span class="hs-chip"><strong>'+totalGoals+'</strong> Goals Scored</span>'
+ ].join("");
 }
 function renderCountdown(){
  const now=new Date();
@@ -756,6 +792,30 @@ async function deleteAdminCredentials(userId,email){
 }
 async function sha256Hex(str){const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));return[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("")}
 let currentSquadTeamId=null;
+function squadOptionsHtml(list,selectedVal,placeholderText){
+ return ['<option value="">'+placeholderText+'</option>'].concat(list.map(p=>'<option value="'+p.id+'"'+(selectedVal===p.id?" selected":"")+'>'+esc(p.name)+(p.player_id?' · '+esc(p.player_id):"")+'</option>')).join("");
+}
+function refreshSquadEditorAvailability(){
+ const teamId=currentSquadTeamId;
+ const assignedElsewhere=new Set(teamSquad.filter(s=>s.team_id!==teamId).map(s=>s.player_id));
+ const availablePlayers=players.filter(p=>!assignedElsewhere.has(p.id));
+ const starterSelects=[...document.querySelectorAll("#squadStarters select[data-slot]")];
+ const takenByStarters=new Set(starterSelects.map(sel=>sel.value).filter(Boolean));
+ starterSelects.forEach(sel=>{
+  const myVal=sel.value;
+  const list=availablePlayers.filter(p=>!takenByStarters.has(p.id)||p.id===myVal);
+  sel.innerHTML=squadOptionsHtml(list,myVal,"— Empty —");
+ });
+ document.querySelectorAll("#squadStarters select[data-sub-for]").forEach(sel=>{
+  const myVal=sel.value;
+  const list=availablePlayers.filter(p=>!takenByStarters.has(p.id)||p.id===myVal);
+  sel.innerHTML=squadOptionsHtml(list,myVal,"— No preferred sub —");
+ });
+ const subChecks=[...document.querySelectorAll("#squadSubsPicker input")];
+ const checkedIds=new Set(subChecks.filter(c=>c.checked).map(c=>c.value));
+ const subList=availablePlayers.filter(p=>!takenByStarters.has(p.id));
+ $("squadSubsPicker").innerHTML=subList.length?subList.map(p=>'<label><input type="checkbox" value="'+p.id+'" onchange="refreshSquadEditorAvailability()" '+(checkedIds.has(p.id)?"checked":"")+'> '+esc(p.name)+'</label>').join(""):'<span class="muted">No available players.</span>';
+}
 function openSquadEditor(teamId){
  currentSquadTeamId=teamId;
  const t=teams.find(x=>x.id===teamId);
@@ -767,12 +827,13 @@ function openSquadEditor(teamId){
  const availablePlayers=players.filter(p=>!assignedElsewhere.has(p.id));
  $("squadStarters").innerHTML=FUTSAL_SLOTS.map(slot=>{
   const cur=starterMap[slot.key]||{};
-  const opts=['<option value="">— Empty —</option>'].concat(availablePlayers.map(p=>'<option value="'+p.id+'"'+(cur.player_id===p.id?" selected":"")+'>'+esc(p.name)+' · '+esc(p.player_id)+'</option>'));
-  const subOpts=['<option value="">— No preferred sub —</option>'].concat(availablePlayers.filter(p=>p.id!==cur.player_id).map(p=>'<option value="'+p.id+'"'+(cur.preferred_sub_id===p.id?" selected":"")+'>'+esc(p.name)+'</option>'));
-  return '<div class="squad-editor-row"><label>'+esc(slot.label)+'</label><select data-slot="'+slot.key+'">'+opts.join("")+'</select></div>'
-   +'<div class="squad-editor-row"><label style="font-size:11px;opacity:.7">↳ Backup</label><select data-sub-for="'+slot.key+'">'+subOpts.join("")+'</select></div>';
+  const opts=squadOptionsHtml(availablePlayers,cur.player_id||"","— Empty —");
+  const subOpts=squadOptionsHtml(availablePlayers.filter(p=>p.id!==cur.player_id),cur.preferred_sub_id||"","— No preferred sub —");
+  return '<div class="squad-editor-row"><label>'+esc(slot.label)+'</label><select data-slot="'+slot.key+'" onchange="refreshSquadEditorAvailability()">'+opts+'</select></div>'
+   +'<div class="squad-editor-row"><label style="font-size:11px;opacity:.7">↳ Backup</label><select data-sub-for="'+slot.key+'" onchange="refreshSquadEditorAvailability()">'+subOpts+'</select></div>';
  }).join("");
- $("squadSubsPicker").innerHTML=availablePlayers.map(p=>'<label><input type="checkbox" value="'+p.id+'" '+(subIds.has(p.id)?"checked":"")+'> '+esc(p.name)+'</label>').join("")||'<span class="muted">No available players — add players first.</span>';
+ $("squadSubsPicker").innerHTML=availablePlayers.map(p=>'<label><input type="checkbox" value="'+p.id+'" onchange="refreshSquadEditorAvailability()" '+(subIds.has(p.id)?"checked":"")+'> '+esc(p.name)+'</label>').join("")||'<span class="muted">No available players — add players first.</span>';
+ refreshSquadEditorAvailability();
  clearMsg("squadMsg");
 }
 async function saveSquad(){
@@ -781,18 +842,18 @@ async function saveSquad(){
   const starterSelects=[...document.querySelectorAll("#squadStarters select[data-slot]")];
   const starters=starterSelects.map(sel=>{
    const subSel=document.querySelector('[data-sub-for="'+sel.dataset.slot+'"]');
-   return{slot:sel.dataset.slot,player_id:sel.value,preferred_sub_id:subSel&&subSel.value?subSel.value:null};
+   return{slot:sel.dataset.slot,player_id:sel.value,is_starting:true,preferred_sub_id:subSel&&subSel.value?subSel.value:null};
   }).filter(x=>x.player_id);
   const starterIds=new Set(starters.map(x=>x.player_id));
   const dup=starters.map(x=>x.player_id).filter((id,i,arr)=>arr.indexOf(id)!==i);
   if(dup.length)throw Error("A player can only be assigned to one starting slot.");
   const subIds=[...document.querySelectorAll("#squadSubsPicker input:checked")].map(i=>i.value).filter(id=>!starterIds.has(id));
-  await api("team_squad","?team_id=eq."+encodeURIComponent(teamId),{method:"DELETE"});
   const rows=[
-   ...starters.map(s=>({team_id:teamId,player_id:s.player_id,is_starting:true,slot:s.slot,preferred_sub_id:s.preferred_sub_id})),
-   ...subIds.map(id=>({team_id:teamId,player_id:id,is_starting:false,slot:null}))
+   ...starters.map(s=>({player_id:s.player_id,is_starting:true,slot:s.slot,preferred_sub_id:s.preferred_sub_id||""})),
+   ...subIds.map(id=>({player_id:id,is_starting:false,slot:"",preferred_sub_id:""}))
   ];
-  if(rows.length)await api("team_squad","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(rows)});
+  const{error}=await sb.rpc("replace_team_squad",{p_team_id:teamId,p_rows:rows});
+  if(error)throw error;
   showMsg("squadMsg","Squad saved.",true);
   logActivity("Update Squad",(teams.find(t=>t.id===teamId)||{}).team_name||teamId);
   await loadAll();
