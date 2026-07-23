@@ -107,6 +107,16 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 .squad-subs{flex:1;min-width:160px}
 .squad-subs h4{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 10px}
 .sub-chip{display:inline-flex;align-items:center;gap:8px;background:#ffffff0d;border:1px solid var(--line);border-radius:99px;padding:6px 12px 6px 6px;margin:0 6px 6px 0;font-size:13px}
+.lineup-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+.lineup-header{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap}
+.lineup-team-label{display:flex;align-items:center;gap:8px;font:800 20px 'Barlow Condensed';text-transform:uppercase}
+.lineup-swatch{width:12px;height:12px;border-radius:50%;flex:none}
+.lineup-vs{font:900 16px 'Barlow Condensed';color:var(--muted)}
+.lineup-pitch{width:min(720px,100%);filter:drop-shadow(0 20px 40px #0007)}
+.lineup-dot-label{font:700 9px Inter;fill:var(--muted);text-anchor:middle}
+.lineup-badge-c{fill:#ffd447}.lineup-badge-g{fill:#25d6ff}
+.lineup-badge-text{font:900 8px Inter;fill:#07111f;text-anchor:middle}
+.lineup-empty-note{font-size:12px;color:var(--muted);text-align:center}
 .squad-editor-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .squad-editor-row label{width:90px;flex:none;font-size:12px;color:var(--muted);font-weight:700}
 .squad-editor-row select{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:#07111f;color:white}
@@ -197,6 +207,11 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <section id="matches" class="section card card-inner reveal">
 <div class="section-title"><h2>Upcoming Match Schedule</h2><button class="secondary super-only" style="display:none" onclick="openModal('matchModal');resetMatchForm()">＋ Match</button></div>
 <div id="upcomingRibbon" class="ribbon"><div class="loading">Loading…</div></div>
+</section>
+
+<section class="section card card-inner reveal">
+<div class="section-title"><h2>Match Day Lineup</h2></div>
+<div id="matchLineupBody"><div class="loading">Loading…</div></div>
 </section>
 
 <section class="section card card-inner reveal">
@@ -450,8 +465,50 @@ async function loadAll(){
  render();
 }
 function render(){
- renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();renderHeroStats();
+ renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();renderHeroStats();renderMatchLineup();
  if($("playersListModal").classList.contains("show"))renderPlayersModal();
+}
+const LINEUP_SLOTS={GK:{x:30,y:150},FIXO_L:{x:90,y:90},FIXO_R:{x:90,y:210},ALA_E:{x:165,y:40},ALA_D:{x:165,y:260},PIVO:{x:235,y:150}};
+function lineupSideSvg(teamId,mirror){
+ if(!teamId)return"";
+ const team=teams.find(t=>t.id===teamId);
+ const color=teamColor(teamId);
+ const starters=teamSquad.filter(s=>s.team_id===teamId&&s.is_starting);
+ return Object.entries(LINEUP_SLOTS).map(([key,pos])=>{
+  const cx=mirror?600-pos.x:pos.x,cy=pos.y;
+  const row=starters.find(s=>s.slot===key);
+  const p=row?players.find(x=>x.id===row.player_id):null;
+  if(!p)return'<circle cx="'+cx+'" cy="'+cy+'" r="17" fill="none" stroke="#ffffff22" stroke-dasharray="3 3"/>';
+  const isCap=team&&p.id===team.captain_id;
+  const isGk=key==="GK";
+  let badges="";
+  if(isGk)badges+='<circle class="lineup-badge-g" cx="'+(cx-14)+'" cy="'+(cy-14)+'" r="9"/><text class="lineup-badge-text" x="'+(cx-14)+'" y="'+(cy-11)+'">G</text>';
+  if(isCap)badges+='<circle class="lineup-badge-c" cx="'+(cx+14)+'" cy="'+(cy-14)+'" r="9"/><text class="lineup-badge-text" x="'+(cx+14)+'" y="'+(cy-11)+'">C</text>';
+  return '<g><circle cx="'+cx+'" cy="'+cy+'" r="17" fill="'+color+'26" stroke="'+color+'" stroke-width="2"/>'
+   +'<text x="'+cx+'" y="'+(cy+4)+'" style="font:800 10px Inter;fill:#fff;text-anchor:middle">'+esc(initials(p.name))+'</text>'
+   +'<text class="lineup-dot-label" x="'+cx+'" y="'+(cy+32)+'">'+esc(p.name.split(" ")[0])+'</text>'
+   +badges+'</g>';
+ }).join("");
+}
+function renderMatchLineup(){
+ const now=new Date();
+ const next=matches.filter(m=>matchDateTime(m)>=now).sort((a,b)=>matchDateTime(a)-matchDateTime(b))[0];
+ if(!next){$("matchLineupBody").innerHTML='<div class="empty">No upcoming match scheduled.</div>';return}
+ const hasA=teamSquad.some(s=>s.team_id===next.team_a_id&&s.is_starting);
+ const hasB=teamSquad.some(s=>s.team_id===next.team_b_id&&s.is_starting);
+ if(!hasA&&!hasB){$("matchLineupBody").innerHTML='<div class="empty">Starting lineups haven\'t been set for '+esc(next.match_code)+' yet — set them from the Teams tab.</div>';return}
+ const nameA=teamName(next.team_a_id,next.team_a_name),nameB=teamName(next.team_b_id,next.team_b_name);
+ const colorA=teamColor(next.team_a_id),colorB=teamColor(next.team_b_id);
+ const svg='<svg class="lineup-pitch" viewBox="0 0 600 320" xmlns="http://www.w3.org/2000/svg">'
+  +'<rect x="4" y="4" width="592" height="300" rx="10" fill="#0a1730" stroke="#ffffff22" stroke-width="2"/>'
+  +'<line x1="300" y1="4" x2="300" y2="304" stroke="#ffffff22" stroke-width="1.5"/>'
+  +'<circle cx="300" cy="154" r="34" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
+  +'<rect x="4" y="104" width="34" height="100" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
+  +'<rect x="562" y="104" width="34" height="100" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
+  +(hasA?lineupSideSvg(next.team_a_id,false):'<text x="150" y="160" style="font:700 13px Inter;fill:var(--muted);text-anchor:middle">Lineup not set</text>')
+  +(hasB?lineupSideSvg(next.team_b_id,true):'<text x="450" y="160" style="font:700 13px Inter;fill:var(--muted);text-anchor:middle">Lineup not set</text>')
+  +'</svg>';
+ $("matchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header"><div class="lineup-team-label"><span class="lineup-swatch" style="background:'+colorA+'"></span>'+esc(nameA)+'</div><div class="lineup-vs">'+esc(next.match_code)+' · '+esc(next.match_date)+'</div><div class="lineup-team-label"><span class="lineup-swatch" style="background:'+colorB+'"></span>'+esc(nameB)+'</div></div>'+svg+'</div>';
 }
 function renderHeroStats(){
  const played=matches.filter(m=>hasScore(m)).length;
