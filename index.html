@@ -107,13 +107,14 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 .squad-subs{flex:1;min-width:160px}
 .squad-subs h4{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 10px}
 .sub-chip{display:inline-flex;align-items:center;gap:8px;background:#ffffff0d;border:1px solid var(--line);border-radius:99px;padding:6px 12px 6px 6px;margin:0 6px 6px 0;font-size:13px}
-.lineup-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
-.lineup-header{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap}
-.lineup-team-label{display:flex;align-items:center;gap:8px;font:800 20px 'Barlow Condensed';text-transform:uppercase}
-.lineup-swatch{width:12px;height:12px;border-radius:50%;flex:none}
-.lineup-vs{font:900 16px 'Barlow Condensed';color:var(--muted)}
+.lineup-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.lineup-header-main{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:100%;flex-wrap:nowrap;font:800 clamp(13px,4.2vw,20px) 'Barlow Condensed';text-transform:uppercase;white-space:nowrap}
+.lineup-tname{overflow:hidden;text-overflow:ellipsis;max-width:38vw}
+.lineup-swatch{width:11px;height:11px;border-radius:50%;flex:none}
+.lineup-vs{color:var(--muted);flex:none}
+.lineup-meta{font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px}
 .lineup-pitch{width:min(720px,100%);filter:drop-shadow(0 20px 40px #0007)}
-.lineup-dot-label{font:700 9px Inter;fill:var(--muted);text-anchor:middle}
+.lineup-dot-label{font:700 9px Inter;fill:#ffffffcc;text-anchor:middle}
 .lineup-badge-c{fill:#ffd447}.lineup-badge-g{fill:#25d6ff}
 .lineup-badge-text{font:900 8px Inter;fill:#07111f;text-anchor:middle}
 .lineup-empty-note{font-size:12px;color:var(--muted);text-align:center}
@@ -247,7 +248,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 
 
 <section id="teams" class="section card card-inner reveal">
-<div class="section-title"><h2>Teams</h2><button class="secondary super-only" style="display:none" onclick="openModal('teamModal');loadTeamEditor()">Edit Names</button></div>
+<div class="section-title"><h2>Teams</h2><div style="display:flex;gap:8px"><button class="secondary" onclick="exportTeamsAsJPG()">📸 Download Team Sheet</button><button class="secondary super-only" style="display:none" onclick="openModal('teamModal');loadTeamEditor()">Edit Names</button></div></div>
 <div id="teamList" class="team-list"><div class="loading">Loading teams…</div></div>
 </section>
 </main>
@@ -373,6 +374,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 </form></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://mhvvazmuamijgjihzbts.supabase.co";
@@ -499,16 +501,19 @@ function renderMatchLineup(){
  if(!hasA&&!hasB){$("matchLineupBody").innerHTML='<div class="empty">Starting lineups haven\'t been set for '+esc(next.match_code)+' yet — set them from the Teams tab.</div>';return}
  const nameA=teamName(next.team_a_id,next.team_a_name),nameB=teamName(next.team_b_id,next.team_b_name);
  const colorA=teamColor(next.team_a_id),colorB=teamColor(next.team_b_id);
+ const stripes=[0,1,2,3,4,5,6,7].map(i=>'<rect x="'+(4+i*74)+'" y="4" width="74" height="300" fill="#ffffff" opacity="'+(i%2?0.03:0)+'"/>').join("");
  const svg='<svg class="lineup-pitch" viewBox="0 0 600 320" xmlns="http://www.w3.org/2000/svg">'
-  +'<rect x="4" y="4" width="592" height="300" rx="10" fill="#0a1730" stroke="#ffffff22" stroke-width="2"/>'
-  +'<line x1="300" y1="4" x2="300" y2="304" stroke="#ffffff22" stroke-width="1.5"/>'
-  +'<circle cx="300" cy="154" r="34" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
-  +'<rect x="4" y="104" width="34" height="100" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
-  +'<rect x="562" y="104" width="34" height="100" fill="none" stroke="#ffffff22" stroke-width="1.5"/>'
-  +(hasA?lineupSideSvg(next.team_a_id,false):'<text x="150" y="160" style="font:700 13px Inter;fill:var(--muted);text-anchor:middle">Lineup not set</text>')
-  +(hasB?lineupSideSvg(next.team_b_id,true):'<text x="450" y="160" style="font:700 13px Inter;fill:var(--muted);text-anchor:middle">Lineup not set</text>')
+  +'<defs><linearGradient id="pitchGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1b4332"/><stop offset="100%" stop-color="#2d6a4f"/></linearGradient></defs>'
+  +'<rect x="4" y="4" width="592" height="300" rx="10" fill="url(#pitchGrad)" stroke="#ffffff33" stroke-width="2"/>'
+  +stripes
+  +'<line x1="300" y1="4" x2="300" y2="304" stroke="#ffffff44" stroke-width="1.5"/>'
+  +'<circle cx="300" cy="154" r="34" fill="none" stroke="#ffffff44" stroke-width="1.5"/>'
+  +'<rect x="4" y="104" width="34" height="100" fill="none" stroke="#ffffff44" stroke-width="1.5"/>'
+  +'<rect x="562" y="104" width="34" height="100" fill="none" stroke="#ffffff44" stroke-width="1.5"/>'
+  +(hasA?lineupSideSvg(next.team_a_id,false):'<text x="150" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">Lineup not set</text>')
+  +(hasB?lineupSideSvg(next.team_b_id,true):'<text x="450" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">Lineup not set</text>')
   +'</svg>';
- $("matchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header"><div class="lineup-team-label"><span class="lineup-swatch" style="background:'+colorA+'"></span>'+esc(nameA)+'</div><div class="lineup-vs">'+esc(next.match_code)+' · '+esc(next.match_date)+'</div><div class="lineup-team-label"><span class="lineup-swatch" style="background:'+colorB+'"></span>'+esc(nameB)+'</div></div>'+svg+'</div>';
+ $("matchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header-main"><span class="lineup-swatch" style="background:'+colorA+'"></span><span class="lineup-tname">'+esc(nameA)+'</span><span class="lineup-vs">vs</span><span class="lineup-tname">'+esc(nameB)+'</span><span class="lineup-swatch" style="background:'+colorB+'"></span></div><div class="lineup-meta">'+esc(next.match_code)+' · '+esc(next.match_date)+'</div>'+svg+'</div>';
 }
 function renderHeroStats(){
  const played=matches.filter(m=>hasScore(m)).length;
@@ -868,6 +873,19 @@ function wrapCenterText(ctx,text,x,y,maxWidth){
  words.forEach(w=>{const test=line?line+" "+w:w;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=w}else line=test});
  if(line)lines.push(line);
  lines.forEach((l,i)=>ctx.fillText(l,x,y+i*58-((lines.length-1)*29)));
+}
+async function exportTeamsAsJPG(){
+ const btn=event&&event.target;
+ const original=btn?btn.textContent:null;
+ if(btn){btn.textContent="Generating…";btn.disabled=true}
+ try{
+  const el=$("teams");
+  const canvas=await html2canvas(el,{backgroundColor:"#0a1730",scale:2,useCORS:true});
+  const dataUrl=canvas.toDataURL("image/jpeg",0.92);
+  const a=document.createElement("a");
+  a.href=dataUrl;a.download="team_sheet_"+todayStr()+".jpg";a.click();
+ }catch(err){alert("Could not generate the image: "+err.message)}
+ finally{if(btn){btn.textContent=original;btn.disabled=false}}
 }
 async function loadAdminsList(){
  try{
