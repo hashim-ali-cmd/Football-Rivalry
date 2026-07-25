@@ -224,6 +224,11 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 </section>
 
 <section class="section card card-inner reveal">
+<div class="section-title"><h2>Last Match Lineup</h2></div>
+<div id="lastMatchLineupBody"><div class="loading">Loading…</div></div>
+</section>
+
+<section class="section card card-inner reveal">
 <div class="section-title"><h2>Match History</h2></div>
 <div id="historyRibbon" class="ribbon"><div class="loading">Loading…</div></div>
 </section>
@@ -362,17 +367,23 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 
 <!-- STATS MODAL -->
 <div id="statsModal" class="modal" onclick="if(event.target===this)closeModal('statsModal')">
-<div class="modalbox"><div class="modalhead"><div class="modaltitle">Add Match Statistics</div><button class="close" onclick="closeModal('statsModal')">×</button></div>
+<div class="modalbox"><div class="modalhead"><div class="modaltitle" id="statsModalTitle">Add Match Statistics</div><button class="close" onclick="closeModal('statsModal')">×</button></div>
 <form id="statsForm" class="form">
+<input type="hidden" id="statsRowId">
 <div class="field full"><label>Match</label><select id="statsMatch" required></select></div>
 <div class="field full"><label>Player</label><select id="statsPlayer" required></select></div>
 <div class="field"><label>Team</label><select id="statsTeam" required><option value="">Select match first</option></select></div>
+<div class="field"><label>Goalkeeper?</label><select id="statsKeeper" onchange="onStatsKeeperChange()"><option value="false">No</option><option value="true">Yes</option></select></div>
+<div id="statsOutfieldFields" class="field full" style="display:contents">
 <div class="field"><label>Goals</label><input id="statsGoals" type="number" min="0" value="0"></div>
 <div class="field"><label>Assists</label><input id="statsAssists" type="number" min="0" value="0"></div>
-<div class="field"><label>Goalkeeper?</label><select id="statsKeeper"><option value="false">No</option><option value="true">Yes</option></select></div>
-<div class="field"><label>Clean Sheet?</label><select id="statsClean"><option value="false">No</option><option value="true">Yes</option></select></div>
-<div class="field"><label>Notes</label><input id="statsNotes"></div>
-<div class="full form-actions"><button type="button" class="secondary" onclick="closeModal('statsModal')">Cancel</button><button class="primary" type="submit">SAVE STATISTICS</button></div>
+<div class="field full"><label>Position</label><select id="statsSlot"><option value="">Select position</option><option value="FIXO_L">Defender (Left)</option><option value="FIXO_R">Defender (Right)</option><option value="ALA_E">Winger (Left)</option><option value="ALA_D">Winger (Right)</option><option value="PIVO">Pivot</option></select></div>
+</div>
+<div id="statsGkFields" class="field full" style="display:none">
+<div class="field"><label>Clean Sheet?</label><select id="statsClean" onchange="onStatsCleanChange()"><option value="true">Yes</option><option value="false">No</option></select></div>
+<div id="statsConcededWrap" class="field" style="display:none"><label>Goals Conceded</label><input id="statsConceded" type="number" min="0" value="0"></div>
+</div>
+<div class="full form-actions"><button type="button" class="secondary" onclick="closeModal('statsModal')">Cancel</button><button class="primary" type="submit" id="statsSubmitBtn">SAVE STATISTICS</button></div>
 <div id="statsMsg" class="msg full"></div>
 </form></div></div>
 
@@ -470,7 +481,7 @@ async function loadAll(){
  render();
 }
 function render(){
- renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();renderHeroStats();renderMatchLineup();
+ renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();renderHeroStats();renderMatchLineup();renderLastMatchLineup();
  if($("playersListModal").classList.contains("show"))renderPlayersModal();
 }
 const LINEUP_SLOTS={GK:{x:30,y:150},FIXO_L:{x:90,y:90},FIXO_R:{x:90,y:210},ALA_E:{x:165,y:40},ALA_D:{x:165,y:260},PIVO:{x:235,y:150}};
@@ -517,6 +528,53 @@ function renderMatchLineup(){
   +(hasB?lineupSideSvg(next.team_b_id,true):'<text x="450" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">Lineup not set</text>')
   +'</svg>';
  $("matchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header-main"><span class="lineup-swatch" style="background:'+colorA+'"></span><span class="lineup-tname">'+esc(nameA)+'</span><span class="lineup-vs">vs</span><span class="lineup-tname">'+esc(nameB)+'</span><span class="lineup-swatch" style="background:'+colorB+'"></span></div><div class="lineup-meta">'+esc(next.match_code)+' · '+esc(next.match_date)+'</div>'+svg+'</div>';
+}
+function matchLineupSideSvg(matchId,teamId,mirror){
+ if(!teamId)return"";
+ const team=teams.find(t=>t.id===teamId);
+ const color=teamColor(teamId);
+ const rows=matchPlayers.filter(mp=>mp.match_id===matchId&&mp.team_id===teamId&&mp.slot);
+ return Object.entries(LINEUP_SLOTS).map(([key,pos])=>{
+  const cx=mirror?600-pos.x:pos.x,cy=pos.y;
+  const row=rows.find(r=>r.slot===key);
+  const p=row?players.find(x=>x.id===row.player_id):null;
+  if(!p)return'<circle cx="'+cx+'" cy="'+cy+'" r="17" fill="none" stroke="#ffffff22" stroke-dasharray="3 3"/>';
+  const isCap=team&&p.id===team.captain_id;
+  const isGk=key==="GK";
+  let badges="";
+  if(isGk)badges+='<circle class="lineup-badge-g" cx="'+(cx-14)+'" cy="'+(cy-14)+'" r="9"/><text class="lineup-badge-text" x="'+(cx-14)+'" y="'+(cy-11)+'">G</text>';
+  if(isCap)badges+='<circle class="lineup-badge-c" cx="'+(cx+14)+'" cy="'+(cy-14)+'" r="9"/><text class="lineup-badge-text" x="'+(cx+14)+'" y="'+(cy-11)+'">C</text>';
+  const statLine=isGk?(row.clean_sheet?"Clean sheet":"Conceded "+(row.goals_conceded??0)):(row.goals+"G "+row.assists+"A");
+  return '<g><circle cx="'+cx+'" cy="'+cy+'" r="17" fill="'+color+'26" stroke="'+color+'" stroke-width="2"/>'
+   +'<text x="'+cx+'" y="'+(cy+4)+'" style="font:800 10px Inter;fill:#fff;text-anchor:middle">'+esc(initials(p.name))+'</text>'
+   +'<text class="lineup-dot-label" x="'+cx+'" y="'+(cy+32)+'">'+esc(p.name.split(" ")[0])+'</text>'
+   +'<text class="lineup-dot-label" x="'+cx+'" y="'+(cy+43)+'" style="fill:'+color+'">'+esc(statLine)+'</text>'
+   +badges+'</g>';
+ }).join("");
+}
+function renderLastMatchLineup(){
+ const now=new Date();
+ const past=matches.filter(m=>matchDateTime(m)<now&&hasScore(m)).sort((a,b)=>matchDateTime(b)-matchDateTime(a));
+ const m=past[0];
+ if(!m){$("lastMatchLineupBody").innerHTML='<div class="empty">No completed matches yet.</div>';return}
+ const hasA=matchPlayers.some(mp=>mp.match_id===m.id&&mp.team_id===m.team_a_id&&mp.slot);
+ const hasB=matchPlayers.some(mp=>mp.match_id===m.id&&mp.team_id===m.team_b_id&&mp.slot);
+ if(!hasA&&!hasB){$("lastMatchLineupBody").innerHTML='<div class="empty">No positional stats logged for '+esc(m.match_code)+' yet — add match statistics with each player\'s position to build this.</div>';return}
+ const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
+ const colorA=teamColor(m.team_a_id),colorB=teamColor(m.team_b_id);
+ const stripes=[0,1,2,3,4,5,6,7].map(i=>'<rect x="'+(4+i*74)+'" y="4" width="74" height="300" fill="#ffffff" opacity="'+(i%2?0.03:0)+'"/>').join("");
+ const svg='<svg class="lineup-pitch" viewBox="0 0 600 330" xmlns="http://www.w3.org/2000/svg">'
+  +'<defs><linearGradient id="pitchGrad2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1b4332"/><stop offset="100%" stop-color="#2d6a4f"/></linearGradient></defs>'
+  +'<rect x="4" y="4" width="592" height="300" rx="10" fill="url(#pitchGrad2)" stroke="#ffffff33" stroke-width="2"/>'
+  +stripes
+  +'<line x1="300" y1="4" x2="300" y2="304" stroke="#ffffff44" stroke-width="1.5"/>'
+  +'<circle cx="300" cy="154" r="34" fill="none" stroke="#ffffff44" stroke-width="1.5"/>'
+  +'<rect x="4" y="104" width="34" height="100" fill="none" stroke="#ffffff44" stroke-width="1.5"/>'
+  +'<rect x="562" y="104" width="34" height="100" fill="none" stroke="#ffffff44" stroke-width="1.5"/>'
+  +(hasA?matchLineupSideSvg(m.id,m.team_a_id,false):'<text x="150" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">No data</text>')
+  +(hasB?matchLineupSideSvg(m.id,m.team_b_id,true):'<text x="450" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">No data</text>')
+  +'</svg>';
+ $("lastMatchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header-main"><span class="lineup-swatch" style="background:'+colorA+'"></span><span class="lineup-tname">'+esc(nameA)+'</span><span class="lineup-vs">'+esc(scoreLine(m))+'</span><span class="lineup-tname">'+esc(nameB)+'</span><span class="lineup-swatch" style="background:'+colorB+'"></span></div><div class="lineup-meta">'+esc(m.match_code)+' · '+esc(m.match_date)+'</div>'+svg+'</div>';
 }
 function renderHeroStats(){
  const played=matches.filter(m=>hasScore(m)).length;
@@ -691,6 +749,11 @@ function renderLeaders(){
 }
 function renderTeamOfMonth(){
  const now=new Date();
+ const lastDayOfMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+ if(now.getDate()<lastDayOfMonth){
+  $("teamOfMonth").innerHTML='<div class="empty">Team of the Month is revealed on the last day of the month. Check back on '+lastDayOfMonth+'.</div>';
+  return;
+ }
  const monthMatches=matches.filter(m=>{
   const d=new Date(m.match_date);
   return hasScore(m)&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
@@ -760,7 +823,40 @@ async function loadTeamEditor(){try{if(!teams.length)teams=await api("teams","?s
 }).join(""):'<div class="empty">No teams available.</div>')+'<div class="form-actions"><button class="primary" onclick="saveTeams()">SAVE TEAM SETTINGS</button></div><hr style="border-color:var(--line);margin:18px 0"><div class="field"><label>Add New Team \u2014 Name</label><input id="newTeamName" placeholder="e.g. FC Falcons"></div><div class="form-actions"><button class="secondary" onclick="addTeam()">\uff0b ADD TEAM</button></div>'}catch(e){$("teamEditor").innerHTML='<div class="error">'+esc(e.message)+'</div>'}}
 async function addTeam(){try{const name=$("newTeamName").value.trim();if(!name)throw Error("Enter a team name.");const code=name.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6)||"TEAM"+(teams.length+1);await api("teams","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_code:code,team_name:name,status:"active"})});teams=[];await loadAll();await loadTeamEditor();showMsg("teamMsg","Team added.",true);logActivity("Add Team",name)}catch(e){showMsg("teamMsg",e.message)}}
 async function saveTeams(){try{const inputs=[...document.querySelectorAll("[data-team-id]")];for(const input of inputs){const teamId=input.dataset.teamId;const capSel=document.querySelector('[data-captain-id="'+teamId+'"]');const vcSel=document.querySelector('[data-vc-id="'+teamId+'"]');await api("teams","?id=eq."+encodeURIComponent(teamId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({team_name:input.value.trim(),captain_id:capSel&&capSel.value?capSel.value:null,vice_captain_id:vcSel&&vcSel.value?vcSel.value:null})})}showMsg("teamMsg","Team settings saved. History updated automatically.",true);logActivity("Edit Teams","Updated team names/captains");teams=[];await loadAll()}catch(e){showMsg("teamMsg",e.message)}}
-async function loadStatsForm(matchId){try{if(!matches.length)matches=await api("matches","?select=*&order=match_date.desc");if(!players.length)players=await api("players","?select=*&order=player_id.asc");$("statsMatch").innerHTML='<option value="">Select match</option>'+matches.map(m=>'<option value="'+m.id+'">'+esc(m.match_code)+' · '+esc(teamName(m.team_a_id,m.team_a_name))+' '+esc(scoreLine(m))+' '+esc(teamName(m.team_b_id,m.team_b_name))+'</option>').join("");$("statsPlayer").innerHTML='<option value="">Select player</option>'+players.map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.player_id)+'</option>').join("");if(matchId){$("statsMatch").value=matchId}onStatsMatchChange()}catch(e){showMsg("statsMsg",e.message)}}
+async function loadStatsForm(matchId,editRow){
+ try{
+  if(!matches.length)matches=await api("matches","?select=*&order=match_date.desc");
+  if(!players.length)players=await api("players","?select=*&order=player_id.asc");
+  $("statsMatch").innerHTML='<option value="">Select match</option>'+matches.map(m=>'<option value="'+m.id+'">'+esc(m.match_code)+' · '+esc(teamName(m.team_a_id,m.team_a_name))+' '+esc(scoreLine(m))+' '+esc(teamName(m.team_b_id,m.team_b_name))+'</option>').join("");
+  $("statsPlayer").innerHTML='<option value="">Select player</option>'+players.map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.player_id)+'</option>').join("");
+  if(editRow){
+   $("statsModalTitle").textContent="Edit Match Statistics";
+   $("statsSubmitBtn").textContent="SAVE CHANGES";
+   $("statsRowId").value=editRow.id;
+   $("statsMatch").value=editRow.match_id;
+   onStatsMatchChange();
+   $("statsTeam").value=editRow.team_id||"";
+   $("statsPlayer").value=editRow.player_id;
+   $("statsKeeper").value=editRow.is_goalkeeper?"true":"false";
+   $("statsGoals").value=editRow.goals||0;
+   $("statsAssists").value=editRow.assists||0;
+   $("statsSlot").value=editRow.slot||"";
+   $("statsClean").value=editRow.clean_sheet?"true":"false";
+   $("statsConceded").value=editRow.goals_conceded||0;
+  }else{
+   $("statsModalTitle").textContent="Add Match Statistics";
+   $("statsSubmitBtn").textContent="SAVE STATISTICS";
+   $("statsRowId").value="";
+   if(matchId)$("statsMatch").value=matchId;
+   onStatsMatchChange();
+   $("statsKeeper").value="false";
+   $("statsGoals").value=0;$("statsAssists").value=0;$("statsSlot").value="";
+   $("statsClean").value="true";$("statsConceded").value=0;
+  }
+  onStatsKeeperChange();
+  clearMsg("statsMsg");
+ }catch(e){showMsg("statsMsg",e.message)}
+}
 function onStatsMatchChange(){
  const m=matches.find(x=>x.id===$("statsMatch").value);
  if(!m){$("statsTeam").innerHTML='<option value="">Select match first</option>';return}
@@ -772,7 +868,51 @@ function onStatsMatchChange(){
  $("statsTeam").innerHTML='<option value="">Select team</option>'+teamOpts.map(t=>'<option value="'+(t.id||"")+'" data-name="'+esc(t.name)+'">'+esc(t.name)+'</option>').join("");
  if(!isSuperAdmin&&teamOpts.length===1)$("statsTeam").value=teamOpts[0].id||"";
 }
-async function saveStats(e){e.preventDefault();try{const teamOpt=$("statsTeam").selectedOptions[0];const body={match_id:$("statsMatch").value,player_id:$("statsPlayer").value,team_id:$("statsTeam").value||null,team_name:teamOpt?teamOpt.dataset.name:"",is_goalkeeper:$("statsKeeper").value==="true",goals:Number($("statsGoals").value||0),assists:Number($("statsAssists").value||0),clean_sheet:$("statsClean").value==="true"};await api("match_players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("statsMsg","Statistics saved.",true);logActivity("Add Match Stats",(players.find(p=>p.id===body.player_id)||{}).name+" in match "+body.match_id);await loadAll();setTimeout(()=>closeModal("statsModal"),500)}catch(e){showMsg("statsMsg",e.message)}}
+function onStatsKeeperChange(){
+ const isGk=$("statsKeeper").value==="true";
+ $("statsOutfieldFields").style.display=isGk?"none":"contents";
+ $("statsGkFields").style.display=isGk?"block":"none";
+ if(isGk)onStatsCleanChange();
+}
+function onStatsCleanChange(){
+ $("statsConcededWrap").style.display=$("statsClean").value==="true"?"none":"block";
+}
+async function saveStats(e){
+ e.preventDefault();
+ try{
+  const teamOpt=$("statsTeam").selectedOptions[0];
+  const isGk=$("statsKeeper").value==="true";
+  const rowId=$("statsRowId").value;
+  const body={
+   match_id:$("statsMatch").value,
+   player_id:$("statsPlayer").value,
+   team_id:$("statsTeam").value||null,
+   team_name:teamOpt?teamOpt.dataset.name:"",
+   is_goalkeeper:isGk,
+   goals:isGk?0:Number($("statsGoals").value||0),
+   assists:isGk?0:Number($("statsAssists").value||0),
+   slot:isGk?"GK":($("statsSlot").value||null),
+   clean_sheet:isGk?$("statsClean").value==="true":false,
+   goals_conceded:isGk?($("statsClean").value==="true"?0:Number($("statsConceded").value||0)):null
+  };
+  if(rowId)await api("match_players","?id=eq."+encodeURIComponent(rowId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});
+  else await api("match_players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});
+  showMsg("statsMsg","Statistics saved.",true);
+  logActivity(rowId?"Edit Match Stats":"Add Match Stats",(players.find(p=>p.id===body.player_id)||{}).name+" in match "+body.match_id);
+  await loadAll();
+  if(currentReportMatchId)openMatchReport(currentReportMatchId);
+  setTimeout(()=>closeModal("statsModal"),500);
+ }catch(e){showMsg("statsMsg",e.message)}
+}
+async function deleteStat(rowId){
+ if(!confirm("Delete this player's stats for this match? This cannot be undone."))return;
+ try{
+  await api("match_players","?id=eq."+encodeURIComponent(rowId),{method:"DELETE"});
+  logActivity("Delete Match Stats",rowId);
+  await loadAll();
+  if(currentReportMatchId)openMatchReport(currentReportMatchId);
+ }catch(err){alert("Could not delete: "+err.message)}
+}
 let currentReportMatchId=null;
 async function deleteMatch(){
  if(!currentReportMatchId)return;
@@ -787,6 +927,7 @@ async function deleteMatch(){
   await loadAll();
  }catch(err){alert("Could not delete match: "+err.message)}
 }
+const SLOT_LABELS={GK:"GK",FIXO_L:"Defender (L)",FIXO_R:"Defender (R)",ALA_E:"Winger (L)",ALA_D:"Winger (R)",PIVO:"Pivot"};
 function openMatchReport(matchId){
  currentReportMatchId=matchId;
  const m=matches.find(x=>x.id===matchId);
@@ -797,10 +938,35 @@ function openMatchReport(matchId){
  const rowsHtml=rows.length?rows.map(mp=>{
   const p=players.find(x=>x.id===mp.player_id);
   const team=mp.team_id?teamName(mp.team_id,mp.team_name):(mp.team_name||"—");
-  return '<div class="pmp-row"><div class="avatar" style="background:'+avatarColor(mp.player_id)+'">'+esc(initials(p?p.name:"?"))+'</div><div style="flex:1"><div class="pmp-name">'+esc(p?p.name:"Unknown player")+'</div><div class="pmp-meta">'+esc(team)+' · '+mp.goals+' goals · '+mp.assists+' assists'+(mp.is_goalkeeper?' · GK':'')+(mp.clean_sheet?' · Clean sheet':'')+'</div></div></div>';
+  const canEdit=isSuperAdmin||(mp.team_id&&mp.team_id===myTeamId);
+  const gkLine=mp.is_goalkeeper?(mp.clean_sheet?" · Clean sheet":" · Conceded "+(mp.goals_conceded??0)):"";
+  const slotLine=mp.slot&&SLOT_LABELS[mp.slot]?" · "+SLOT_LABELS[mp.slot]:"";
+  const motmTag=m.man_of_match_id===mp.player_id?' · ⭐ MOTM':"";
+  const actions=(canEdit?'<button class="secondary" onclick="event.stopPropagation();openStatsEdit(\''+mp.id+'\')">Edit</button>':"")+(isSuperAdmin?'<button class="danger" onclick="event.stopPropagation();deleteStat(\''+mp.id+'\')">Delete</button>':"");
+  return '<div class="pmp-row"><div class="avatar" style="background:'+avatarColor(mp.player_id)+'">'+esc(initials(p?p.name:"?"))+'</div><div style="flex:1"><div class="pmp-name">'+esc(p?p.name:"Unknown player")+motmTag+'</div><div class="pmp-meta">'+esc(team)+slotLine+(mp.is_goalkeeper?gkLine:' · '+mp.goals+' goals · '+mp.assists+' assists')+'</div></div>'+(actions?'<div style="display:flex;gap:6px">'+actions+'</div>':"")+'</div>';
  }).join(""):'<div class="empty">No player stats logged for this match yet.</div>';
- $("reportBody").innerHTML='<div class="h2h-card" style="margin-bottom:16px"><div class="h2h-team"><div class="tn">'+esc(nameA)+'</div></div><div class="h2h-vs">'+esc(scoreLine(m))+(isSuperAdmin?' <button class="secondary" style="margin-left:8px" onclick="openEnterScore(\''+m.id+'\')">'+(hasScore(m)?"Edit":"Enter")+' Score</button>':'')+'</div><div class="h2h-team"><div class="tn">'+esc(nameB)+'</div></div></div><div class="players-modal-list">'+rowsHtml+'</div>';
+ const motmPlayer=m.man_of_match_id?players.find(p=>p.id===m.man_of_match_id):null;
+ const motmSection=isSuperAdmin
+  ?'<div style="margin:14px 0"><label style="display:block;color:var(--muted);font-size:11px;font-weight:700;margin-bottom:6px">🏅 Man of the Match</label><select id="motmSelect" onchange="saveManOfMatch(\''+matchId+'\')"><option value="">— None —</option>'+rows.map(mp=>{const p=players.find(x=>x.id===mp.player_id);return p?'<option value="'+p.id+'"'+(m.man_of_match_id===p.id?" selected":"")+'>'+esc(p.name)+'</option>':""}).join("")+'</select></div>'
+  :(motmPlayer?'<div class="muted" style="margin:10px 0">🏅 Man of the Match: <strong>'+esc(motmPlayer.name)+'</strong></div>':"");
+ $("reportBody").innerHTML='<div class="h2h-card" style="margin-bottom:8px"><div class="h2h-team"><div class="tn">'+esc(nameA)+'</div></div><div class="h2h-vs">'+esc(scoreLine(m))+(isSuperAdmin?' <button class="secondary" style="margin-left:8px" onclick="openEnterScore(\''+m.id+'\')">'+(hasScore(m)?"Edit":"Enter")+' Score</button>':'')+'</div><div class="h2h-team"><div class="tn">'+esc(nameB)+'</div></div></div>'+motmSection+'<div class="players-modal-list">'+rowsHtml+'</div>';
  openModal("matchReportModal");
+}
+function openStatsEdit(rowId){
+ const row=matchPlayers.find(x=>x.id===rowId);
+ if(!row)return;
+ closeModal("matchReportModal");
+ openModal("statsModal");
+ loadStatsForm(null,row);
+}
+async function saveManOfMatch(matchId){
+ try{
+  const playerId=$("motmSelect").value||null;
+  await api("matches","?id=eq."+encodeURIComponent(matchId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({man_of_match_id:playerId})});
+  logActivity("Set Man of the Match",playerId?(players.find(p=>p.id===playerId)||{}).name:"Cleared");
+  await loadAll();
+  openMatchReport(matchId);
+ }catch(err){alert("Could not save Man of the Match: "+err.message)}
 }
 function exportMatchReportPDF(){
  const m=matches.find(x=>x.id===currentReportMatchId);
