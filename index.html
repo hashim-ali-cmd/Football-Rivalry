@@ -71,6 +71,13 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opac
 @keyframes scoreGlow{0%,100%{text-shadow:0 0 8px #ffd44744}50%{text-shadow:0 0 20px #ffd447aa}}
 .rcard .rteams{font:800 16px 'Barlow Condensed';text-transform:uppercase;display:flex;justify-content:space-between;gap:6px;align-items:center}
 .h2h-card{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:24px;background:linear-gradient(145deg,#ffffff10,#ffffff06);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border:1px solid var(--line);border-radius:16px}
+@media(max-width:560px){
+.h2h-card{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;justify-items:center;text-align:center}
+.h2h-card>*:nth-child(1){order:1}
+.h2h-card>*:nth-child(3){order:2}
+.h2h-card>*:nth-child(2){order:3;grid-column:1/-1;padding:8px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);width:100%}
+.h2h-card>*:nth-child(4){order:4;grid-column:1/-1}
+}
 .h2h-team{flex:1;min-width:140px;text-align:center}
 .h2h-team .tn{font:800 22px 'Barlow Condensed';text-transform:uppercase}
 .h2h-vs{font:900 22px 'Barlow Condensed';color:var(--muted);padding:0 10px}
@@ -563,18 +570,12 @@ function matchLineupSideSvg(matchId,teamId,mirror){
    +badges+'</g>';
  }).join("");
 }
-function renderLastMatchLineup(){
- const now=new Date();
- const past=matches.filter(m=>matchDateTime(m)<now&&hasScore(m)).sort((a,b)=>matchDateTime(b)-matchDateTime(a));
- const m=past[0];
- if(!m){$("lastMatchLineupBody").innerHTML='<div class="empty">No completed matches yet.</div>';return}
+function completedMatchLineupSvg(m){
  const hasA=matchPlayers.some(mp=>mp.match_id===m.id&&mp.team_id===m.team_a_id&&mp.slot);
  const hasB=matchPlayers.some(mp=>mp.match_id===m.id&&mp.team_id===m.team_b_id&&mp.slot);
- if(!hasA&&!hasB){$("lastMatchLineupBody").innerHTML='<div class="empty">No positional stats logged for '+esc(m.match_code)+' yet — add match statistics with each player\'s position to build this.</div>';return}
- const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
- const colorA=teamColor(m.team_a_id),colorB=teamColor(m.team_b_id);
+ if(!hasA&&!hasB)return null;
  const stripes=[0,1,2,3,4,5,6,7].map(i=>'<rect x="'+(4+i*74)+'" y="4" width="74" height="300" fill="#ffffff" opacity="'+(i%2?0.03:0)+'"/>').join("");
- const svg='<svg class="lineup-pitch" viewBox="0 0 600 330" xmlns="http://www.w3.org/2000/svg">'
+ return '<svg class="lineup-pitch" viewBox="0 0 600 330" xmlns="http://www.w3.org/2000/svg">'
   +'<defs><linearGradient id="pitchGrad2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1b4332"/><stop offset="100%" stop-color="#2d6a4f"/></linearGradient></defs>'
   +'<rect x="4" y="4" width="592" height="300" rx="10" fill="url(#pitchGrad2)" stroke="#ffffff33" stroke-width="2"/>'
   +stripes
@@ -585,6 +586,16 @@ function renderLastMatchLineup(){
   +(hasA?matchLineupSideSvg(m.id,m.team_a_id,false):'<text x="150" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">No data</text>')
   +(hasB?matchLineupSideSvg(m.id,m.team_b_id,true):'<text x="450" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">No data</text>')
   +'</svg>';
+}
+function renderLastMatchLineup(){
+ const now=new Date();
+ const past=matches.filter(m=>matchDateTime(m)<now&&hasScore(m)).sort((a,b)=>matchDateTime(b)-matchDateTime(a));
+ const m=past[0];
+ if(!m){$("lastMatchLineupBody").innerHTML='<div class="empty">No completed matches yet.</div>';return}
+ const svg=completedMatchLineupSvg(m);
+ if(!svg){$("lastMatchLineupBody").innerHTML='<div class="empty">No positional stats logged for '+esc(m.match_code)+' yet — use Arrange Lineup from its Match Report to build this.</div>';return}
+ const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
+ const colorA=teamColor(m.team_a_id),colorB=teamColor(m.team_b_id);
  $("lastMatchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header-main"><span class="lineup-swatch" style="background:'+colorA+'"></span><span class="lineup-tname">'+esc(nameA)+'</span><span class="lineup-vs">'+esc(scoreLine(m))+'</span><span class="lineup-tname">'+esc(nameB)+'</span><span class="lineup-swatch" style="background:'+colorB+'"></span></div><div class="lineup-meta">'+esc(m.match_code)+' · '+esc(m.match_date)+'</div>'+svg+'</div>';
 }
 function renderHeroStats(){
@@ -755,10 +766,16 @@ function renderTeams(){
  }).join(""):'<div class="empty">No teams table/data available.</div>';
 }
 function renderLeaders(){
- const stats={};players.forEach(p=>stats[p.id]={...p,goals:0,assists:0,apps:0,clean:0});
- matchPlayers.forEach(mp=>{if(stats[mp.player_id]){stats[mp.player_id].goals+=Number(mp.goals||0);stats[mp.player_id].assists+=Number(mp.assists||0);stats[mp.player_id].apps++;if(mp.clean_sheet)stats[mp.player_id].clean++}});
- const a=Object.values(stats),best=k=>[...a].sort((x,y)=>y[k]-x[k])[0],g=best("goals"),as=best("assists"),k=best("clean");
- $("leaders").innerHTML='<div class="leader"><div>⚽</div><div class="leader-label">TOP SCORER</div><div class="leader-name">'+esc(g?.name||"—")+'</div><div class="muted">'+(g?.goals||0)+' goals</div></div><div class="leader"><div>🎯</div><div class="leader-label">TOP ASSISTS</div><div class="leader-name">'+esc(as?.name||"—")+'</div><div class="muted">'+(as?.assists||0)+' assists</div></div><div class="leader"><div>🧤</div><div class="leader-label">BEST KEEPER</div><div class="leader-name">'+esc(k?.name||"—")+'</div><div class="muted">'+(k?.clean||0)+' clean sheets</div></div>';
+ const stats={};players.forEach(p=>stats[p.id]={...p,goals:0,assists:0,apps:0,clean:0,conceded:0,gkApps:0});
+ matchPlayers.forEach(mp=>{
+  if(!stats[mp.player_id])return;
+  stats[mp.player_id].goals+=Number(mp.goals||0);stats[mp.player_id].assists+=Number(mp.assists||0);stats[mp.player_id].apps++;
+  if(mp.is_goalkeeper){stats[mp.player_id].gkApps++;stats[mp.player_id].conceded+=Number(mp.goals_conceded||0);if(mp.clean_sheet)stats[mp.player_id].clean++}
+ });
+ const a=Object.values(stats),best=k=>[...a].sort((x,y)=>y[k]-x[k])[0],g=best("goals"),as=best("assists");
+ const keepers=a.filter(x=>x.gkApps>0).sort((x,y)=>(x.conceded-y.conceded)||(y.clean-x.clean));
+ const k=keepers[0];
+ $("leaders").innerHTML='<div class="leader"><div>⚽</div><div class="leader-label">TOP SCORER</div><div class="leader-name">'+esc(g?.name||"—")+'</div><div class="muted">'+(g?.goals||0)+' goals</div></div><div class="leader"><div>🎯</div><div class="leader-label">TOP ASSISTS</div><div class="leader-name">'+esc(as?.name||"—")+'</div><div class="muted">'+(as?.assists||0)+' assists</div></div><div class="leader"><div>🧤</div><div class="leader-label">BEST KEEPER</div><div class="leader-name">'+esc(k?.name||"—")+'</div><div class="muted">'+(k?(k.conceded+' conceded · '+k.clean+' clean sheets'):"—")+'</div></div>';
  renderTeamOfMonth();
 }
 function renderTeamOfMonth(){
@@ -1003,13 +1020,19 @@ function openLineupEditor(matchId){
  const teamsInMatch=[{id:m.team_a_id,name:teamName(m.team_a_id,m.team_a_name)},{id:m.team_b_id,name:teamName(m.team_b_id,m.team_b_name)}];
  const blocks=teamsInMatch.map(t=>{
   const canEdit=isSuperAdmin||(t.id&&t.id===myTeamId);
-  const rows=matchPlayers.filter(mp=>mp.match_id===matchId&&mp.team_id===t.id);
   const header='<div class="squad-editor-row"><label style="width:auto;font-size:16px;color:var(--text);font-weight:800">'+esc(t.name)+'</label></div>';
-  if(!rows.length)return '<div style="margin-bottom:18px">'+header+'<div class="muted" style="font-size:12px">No stats logged for this team in this match yet — add stats first.</div></div>';
   if(!canEdit)return '<div style="margin-bottom:18px">'+header+'<div class="muted" style="font-size:12px">Only '+esc(t.name)+'\'s admin or the super admin can arrange this side.</div></div>';
+  const existingRows=matchPlayers.filter(mp=>mp.match_id===matchId&&mp.team_id===t.id);
+  const existingPlayerIds=new Set(existingRows.filter(r=>r.player_id).map(r=>r.player_id));
+  // Prefer existing stat rows (so we don't create duplicates); fall back to the full roster
+  // for anyone who played but hasn't had stats entered yet — a blank stats row is created on save.
+  const candidates=[
+   ...existingRows.map(r=>({value:"row:"+r.id,label:mpName(r)+(r.is_goalkeeper?" (GK)":""),slot:r.slot})),
+   ...players.filter(p=>!existingPlayerIds.has(p.id)).map(p=>({value:"player:"+p.id,label:p.name+" · "+p.player_id,slot:null}))
+  ];
   const slotRows=Object.entries(LINEUP_SLOTS).map(([key])=>{
-   const current=rows.find(r=>r.slot===key);
-   const opts=['<option value="">— Empty —</option>'].concat(rows.map(r=>'<option value="'+r.id+'"'+(current&&current.id===r.id?" selected":"")+'>'+esc(mpName(r))+(r.is_goalkeeper?" (GK)":"")+'</option>'));
+   const current=candidates.find(c=>c.slot===key);
+   const opts=['<option value="">— Empty —</option>'].concat(candidates.map(c=>'<option value="'+c.value+'"'+(current&&current.value===c.value?" selected":"")+'>'+esc(c.label)+'</option>'));
    return '<div class="squad-editor-row"><label>'+esc(SLOT_LABELS[key])+'</label><select data-team="'+t.id+'" data-slot="'+key+'">'+opts.join("")+'</select></div>';
   }).join("");
   return '<div style="margin-bottom:18px">'+header+slotRows+'</div>';
@@ -1021,49 +1044,131 @@ function openLineupEditor(matchId){
 async function saveLineupArrangement(){
  try{
   const teamIds=[...new Set([...document.querySelectorAll("#lineupEditorBody select[data-team]")].map(s=>s.dataset.team))];
-  const updates=[],clearIds=new Set();
+  const rowUpdates=[],newRows=[],clearIds=new Set();
   for(const teamId of teamIds){
    const selects=[...document.querySelectorAll('#lineupEditorBody select[data-team="'+teamId+'"]')];
-   const chosen=selects.map(s=>({slot:s.dataset.slot,rowId:s.value})).filter(x=>x.rowId);
-   const ids=chosen.map(x=>x.rowId);
-   const dup=ids.filter((id,i,arr)=>arr.indexOf(id)!==i);
+   const chosen=selects.map(s=>({slot:s.dataset.slot,value:s.value})).filter(x=>x.value);
+   const values=chosen.map(x=>x.value);
+   const dup=values.filter((v,i,arr)=>arr.indexOf(v)!==i);
    if(dup.length)throw Error("A player can only occupy one slot per team.");
-   matchPlayers.filter(mp=>mp.match_id===currentLineupMatchId&&mp.team_id===teamId&&mp.slot&&!ids.includes(mp.id)).forEach(mp=>clearIds.add(mp.id));
-   chosen.forEach(c=>updates.push(c));
+   matchPlayers.filter(mp=>mp.match_id===currentLineupMatchId&&mp.team_id===teamId&&mp.slot&&!values.includes("row:"+mp.id)).forEach(mp=>clearIds.add(mp.id));
+   const m=matches.find(x=>x.id===currentLineupMatchId);
+   const tName=teamName(teamId);
+   chosen.forEach(c=>{
+    if(c.value.startsWith("row:"))rowUpdates.push({rowId:c.value.slice(4),slot:c.slot});
+    else{
+     const playerId=c.value.slice(7);
+     newRows.push({match_id:currentLineupMatchId,player_id:playerId,team_id:teamId,team_name:tName,is_goalkeeper:c.slot==="GK",goals:0,assists:0,clean_sheet:c.slot==="GK",goals_conceded:c.slot==="GK"?0:null,slot:c.slot});
+    }
+   });
   }
-  for(const u of updates)await api("match_players","?id=eq."+encodeURIComponent(u.rowId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({slot:u.slot})});
+  for(const u of rowUpdates)await api("match_players","?id=eq."+encodeURIComponent(u.rowId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({slot:u.slot})});
   for(const id of clearIds)await api("match_players","?id=eq."+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({slot:null})});
+  if(newRows.length)await api("match_players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(newRows)});
   showMsg("lineupEditorMsg","Lineup saved.",true);
   logActivity("Arrange Lineup",matches.find(m=>m.id===currentLineupMatchId)?.match_code||currentLineupMatchId);
   await loadAll();
   setTimeout(()=>closeModal("lineupEditorModal"),500);
  }catch(e){showMsg("lineupEditorMsg",e.message)}
 }
-function exportMatchReportPDF(){
+async function exportMatchReportPDF(){
  const m=matches.find(x=>x.id===currentReportMatchId);
- if(!m||!window.jspdf){return}
- const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
- const rows=matchPlayers.filter(mp=>mp.match_id===currentReportMatchId);
- const {jsPDF}=window.jspdf;
- const doc=new jsPDF();
- let y=20;
- doc.setFontSize(18);doc.text("Football Rivalry — Match Report",14,y);y+=10;
- doc.setFontSize(12);doc.text(m.match_code+"  ·  "+m.match_date+(m.kickoff_time?"  ·  "+m.kickoff_time:""),14,y);y+=8;
- doc.text((m.location||"—"),14,y);y+=10;
- doc.setFontSize(16);doc.text(nameA+"   "+scoreLine(m)+"   "+nameB,14,y);y+=14;
- doc.setFontSize(12);doc.text("Player Stats",14,y);y+=8;
- doc.setFontSize(10);
- doc.text("Player",14,y);doc.text("Team",70,y);doc.text("Goals",120,y);doc.text("Assists",140,y);doc.text("Notes",165,y);y+=6;
- doc.line(14,y-4,196,y-4);
- if(!rows.length){doc.text("No player stats logged for this match.",14,y);y+=8}
- rows.forEach(mp=>{
-  const team=mp.team_id?teamName(mp.team_id,mp.team_name):(mp.team_name||"—");
-  const notes=[mp.is_goalkeeper?"GK":"",mp.clean_sheet?"Clean sheet":"",!mp.player_id?"Visitor":""].filter(Boolean).join(", ");
-  doc.text(String(mpName(mp)),14,y);doc.text(String(team),70,y);doc.text(String(mp.goals),120,y);doc.text(String(mp.assists),140,y);doc.text(notes,165,y);
-  y+=7;
-  if(y>280){doc.addPage();y=20}
- });
- doc.save((m.match_code||"match")+"_report.pdf");
+ if(!m||!window.jspdf)return;
+ const btn=event&&event.target;
+ const original=btn?btn.textContent:null;
+ if(btn){btn.textContent="Generating…";btn.disabled=true}
+ try{
+  const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
+  const colorA=teamColor(m.team_a_id),colorB=teamColor(m.team_b_id);
+  const rows=matchPlayers.filter(mp=>mp.match_id===currentReportMatchId);
+  const motmPlayer=m.man_of_match_id?players.find(p=>p.id===m.man_of_match_id):null;
+  const hexToRgb=h=>{h=String(h).replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255]};
+
+  // Capture the futsal lineup pitch as an image, if it's been arranged
+  let pitchImg=null,pitchRatio=600/330;
+  const svg=completedMatchLineupSvg(m);
+  if(svg&&window.html2canvas){
+   const wrapper=document.createElement("div");
+   wrapper.style.cssText="position:fixed;left:-9999px;top:0;width:640px;background:#0a1730;padding:16px";
+   wrapper.innerHTML=svg;
+   document.body.appendChild(wrapper);
+   try{const canvas=await html2canvas(wrapper,{backgroundColor:"#0a1730",scale:2});pitchImg=canvas.toDataURL("image/png");pitchRatio=canvas.width/canvas.height}catch(e){/* fall back to no image */}
+   document.body.removeChild(wrapper);
+  }
+
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const pageW=210,pageH=297;
+  const[navyR,navyG,navyB]=[10,23,48],[goldR,goldG,goldB]=[255,212,71],[cyanR,cyanG,cyanB]=[37,214,255];
+  const[caR,caG,caB]=hexToRgb(colorA),[cbR,cbG,cbB]=hexToRgb(colorB);
+  const newPage=()=>{doc.addPage();doc.setFillColor(navyR,navyG,navyB);doc.rect(0,0,pageW,pageH,'F')};
+
+  doc.setFillColor(navyR,navyG,navyB);doc.rect(0,0,pageW,pageH,'F');
+  doc.setFillColor(goldR,goldG,goldB);doc.rect(0,0,pageW,28,'F');
+  doc.setTextColor(navyR,navyG,navyB);doc.setFont("helvetica","bold");doc.setFontSize(22);
+  doc.text("FOOTBALL RIVALRY",14,17);
+  doc.setFontSize(10);doc.setFont("helvetica","normal");
+  doc.text("MATCH REPORT",14,24);
+
+  let y=40;
+  doc.setTextColor(200,210,225);doc.setFontSize(11);
+  doc.text(m.match_code+"   ·   "+m.match_date+(m.kickoff_time?"   ·   "+m.kickoff_time:"")+(m.location?"   ·   "+m.location:""),14,y);
+  y+=14;
+
+  doc.setDrawColor(goldR,goldG,goldB);doc.setLineWidth(0.6);
+  doc.roundedRect(14,y,pageW-28,26,3,3,'S');
+  doc.setFont("helvetica","bold");doc.setFontSize(14);
+  doc.setTextColor(caR,caG,caB);doc.text(nameA,20,y+15,{maxWidth:58});
+  doc.setTextColor(goldR,goldG,goldB);doc.setFontSize(19);doc.text(scoreLine(m),pageW/2,y+16,{align:"center"});
+  doc.setTextColor(cbR,cbG,cbB);doc.setFontSize(14);doc.text(nameB,pageW-20,y+15,{align:"right",maxWidth:58});
+  y+=26+10;
+
+  if(motmPlayer){
+   doc.setFillColor(goldR,goldG,goldB);doc.roundedRect(14,y,pageW-28,10,2,2,'F');
+   doc.setTextColor(navyR,navyG,navyB);doc.setFont("helvetica","bold");doc.setFontSize(11);
+   doc.text("\u2605 Man of the Match: "+motmPlayer.name,pageW/2,y+7,{align:"center"});
+   y+=18;
+  }
+
+  if(pitchImg){
+   const imgW=pageW-28,imgH=imgW/pitchRatio;
+   doc.addImage(pitchImg,"PNG",14,y,imgW,imgH);
+   y+=imgH+10;
+  }
+
+  if(y>230)newPage(),y=20;
+
+  doc.setTextColor(goldR,goldG,goldB);doc.setFont("helvetica","bold");doc.setFontSize(13);
+  doc.text("Player Statistics",14,y);y+=8;
+  const colX={player:16,team:80,goals:126,assists:148,notes:168};
+  doc.setFontSize(8.5);doc.setTextColor(150,165,190);
+  doc.text("PLAYER",colX.player,y);doc.text("TEAM",colX.team,y);doc.text("GOALS",colX.goals,y);doc.text("ASST",colX.assists,y);doc.text("NOTES",colX.notes,y);
+  y+=4;doc.setDrawColor(80,90,110);doc.line(14,y,196,y);y+=6;
+
+  if(!rows.length){
+   doc.setTextColor(150,165,190);doc.setFont("helvetica","normal");doc.setFontSize(10);
+   doc.text("No player stats logged for this match.",14,y);y+=8;
+  }
+  rows.forEach((mp,i)=>{
+   if(y>282){newPage();y=20}
+   if(i%2===0){doc.setFillColor(22,40,66);doc.rect(14,y-4.5,182,7,'F')}
+   const team=mp.team_id?teamName(mp.team_id,mp.team_name):(mp.team_name||"—");
+   const teamRgb=mp.team_id===m.team_a_id?[caR,caG,caB]:(mp.team_id===m.team_b_id?[cbR,cbG,cbB]:[150,165,190]);
+   const notes=[mp.is_goalkeeper?"GK":"",mp.clean_sheet?"Clean sheet":"",(mp.is_goalkeeper&&!mp.clean_sheet)?("Conceded "+(mp.goals_conceded??0)):"",!mp.player_id?"Visitor":"",(m.man_of_match_id&&mp.player_id&&mp.player_id===m.man_of_match_id)?"MOTM":""].filter(Boolean).join(", ");
+   doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(235,240,248);
+   doc.text(String(mpName(mp)).replace(" (visitor)",""),colX.player,y,{maxWidth:60});
+   doc.setTextColor(teamRgb[0],teamRgb[1],teamRgb[2]);doc.text(String(team),colX.team,y,{maxWidth:42});
+   doc.setTextColor(goldR,goldG,goldB);doc.text(String(mp.goals),colX.goals,y);doc.text(String(mp.assists),colX.assists,y);
+   doc.setTextColor(cyanR,cyanG,cyanB);doc.setFontSize(7.5);doc.text(notes,colX.notes,y,{maxWidth:26});
+   y+=8;
+  });
+
+  doc.setTextColor(110,125,150);doc.setFontSize(8);doc.setFont("helvetica","normal");
+  doc.text("Generated from Football Rivalry Dashboard",14,292);
+
+  doc.save((m.match_code||"match")+"_report.pdf");
+ }catch(err){alert("Could not generate PDF: "+err.message)}
+ finally{if(btn){btn.textContent=original;btn.disabled=false}}
 }
 function shareResultCard(){
  const m=matches.find(x=>x.id===currentReportMatchId);
