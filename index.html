@@ -98,6 +98,13 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 }
 @media(max-width:600px){.hero{padding:50px 6% 40px}}
 .countdown-banner{position:relative;overflow:hidden;margin:24px 0 0;padding:16px 20px;border-radius:16px;background:linear-gradient(135deg,#ffd44722,#25d6ff11);backdrop-filter:blur(18px);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.weather-card{margin:14px 0 0;padding:16px 20px;border-radius:16px;background:linear-gradient(135deg,#25d6ff18,#ffffff08);backdrop-filter:blur(18px);border:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.weather-icon{font-size:42px;line-height:1}
+.weather-info{flex:1;min-width:180px}
+.weather-loc{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.weather-temp{font:800 22px 'Barlow Condensed'}
+.weather-rain{font-size:13px;color:var(--cyan);font-weight:700;margin-top:4px}
+.weather-rain.high{color:var(--red)}
 .countdown-banner::after{content:'';position:absolute;top:0;bottom:0;width:60%;background:linear-gradient(90deg,transparent,#ffffff14,transparent);animation:shimmerSweep 3.5s ease-in-out infinite}
 @keyframes shimmerSweep{0%{left:-70%}100%{left:130%}}
 .countdown-banner .cd-time{font:900 22px 'Barlow Condensed';color:var(--yellow)}
@@ -214,6 +221,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div id="errors"></div>
 
 <div id="countdownBanner"></div>
+<div id="weatherBody"></div>
 
 <section id="matches" class="section card card-inner reveal">
 <div class="section-title"><h2>Upcoming Match Schedule</h2><button class="secondary super-only" style="display:none" onclick="openModal('matchModal');resetMatchForm()">＋ Match</button></div>
@@ -499,7 +507,7 @@ async function loadAll(){
  render();
 }
 function render(){
- renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();renderHeroStats();renderMatchLineup();renderLastMatchLineup();
+ renderUpcoming();renderLastMatch();renderHeadToHead();renderTeams();renderLeaders();renderCountdown();renderStreaksAndMilestones();renderHeroStats();renderMatchLineup();renderLastMatchLineup();renderWeatherForecast();
  if($("playersListModal").classList.contains("show"))renderPlayersModal();
 }
 const LINEUP_SLOTS={GK:{x:30,y:150},FIXO_L:{x:90,y:90},FIXO_R:{x:90,y:210},ALA_E:{x:165,y:40},ALA_D:{x:165,y:260},PIVO:{x:235,y:150}};
@@ -618,6 +626,44 @@ function renderCountdown(){
  $("countdownBanner").innerHTML='<div class="countdown-banner"><div>⏱ <strong>'+esc(next.match_code)+'</strong> — '+esc(teamName(next.team_a_id,next.team_a_name))+' vs '+esc(teamName(next.team_b_id,next.team_b_name))+'</div><div class="cd-time">'+label+'</div></div>';
 }
 setInterval(()=>{if(matches.length)renderCountdown()},30000);
+setInterval(()=>{if(matches.length){weatherCacheKey=null;renderWeatherForecast()}},1800000);
+let weatherCacheKey=null,weatherCacheData=null;
+function weatherInfo(code){
+ const map={0:["☀️","Clear sky"],1:["🌤️","Mainly clear"],2:["⛅","Partly cloudy"],3:["☁️","Overcast"],45:["🌫️","Fog"],48:["🌫️","Fog"],51:["🌦️","Light drizzle"],53:["🌦️","Drizzle"],55:["🌦️","Dense drizzle"],56:["🌦️","Freezing drizzle"],57:["🌦️","Freezing drizzle"],61:["🌧️","Slight rain"],63:["🌧️","Rain"],65:["🌧️","Heavy rain"],66:["🌧️","Freezing rain"],67:["🌧️","Freezing rain"],71:["🌨️","Slight snow"],73:["🌨️","Snow"],75:["🌨️","Heavy snow"],77:["🌨️","Snow grains"],80:["🌦️","Rain showers"],81:["🌦️","Rain showers"],82:["🌧️","Violent showers"],85:["🌨️","Snow showers"],86:["🌨️","Snow showers"],95:["⛈️","Thunderstorm"],96:["⛈️","Thunderstorm + hail"],99:["⛈️","Thunderstorm + hail"]};
+ return map[code]||["🌡️","Weather"];
+}
+async function renderWeatherForecast(){
+ const now=new Date();
+ const next=matches.filter(m=>matchDateTime(m)>=now).sort((a,b)=>matchDateTime(a)-matchDateTime(b))[0];
+ if(!next){$("weatherBody").innerHTML="";return}
+ if(!next.location||!next.location.trim()){$("weatherBody").innerHTML="";return}
+ const daysAhead=(matchDateTime(next)-now)/86400000;
+ if(daysAhead>15){$("weatherBody").innerHTML='<div class="weather-card"><div class="weather-icon">📅</div><div class="weather-info"><div class="weather-loc">'+esc(next.match_code)+' · '+esc(next.location)+'</div><div class="muted" style="font-size:13px">Forecast becomes available within ~15 days of kickoff.</div></div></div>';return}
+ const cacheKey=next.id+"|"+next.location;
+ if(weatherCacheKey===cacheKey&&weatherCacheData){renderWeatherCard(next,weatherCacheData);return}
+ $("weatherBody").innerHTML='<div class="weather-card"><div class="loading">Fetching forecast…</div></div>';
+ try{
+  const geoRes=await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(next.location)+"&count=1");
+  const geo=await geoRes.json();
+  if(!geo.results||!geo.results.length){$("weatherBody").innerHTML='<div class="weather-card"><div class="weather-icon">📍</div><div class="weather-info"><div class="weather-loc">'+esc(next.match_code)+'</div><div class="muted" style="font-size:13px">Couldn\'t find "'+esc(next.location)+'" for a forecast — try adding a city name to the match location.</div></div></div>';return}
+  const{latitude,longitude,name,country}=geo.results[0];
+  const fRes=await fetch("https://api.open-meteo.com/v1/forecast?latitude="+latitude+"&longitude="+longitude+"&hourly=temperature_2m,precipitation_probability,weathercode&timezone=auto&forecast_days=16");
+  const forecast=await fRes.json();
+  if(!forecast.hourly){$("weatherBody").innerHTML='<div class="weather-card"><div class="weather-icon">🌡️</div><div class="weather-info"><div class="muted" style="font-size:13px">Weather forecast unavailable right now.</div></div></div>';return}
+  const targetIso=next.match_date+"T"+(next.kickoff_time?next.kickoff_time.slice(0,5):"12:00");
+  const times=forecast.hourly.time;
+  let idx=times.findIndex(t=>t>=targetIso);
+  if(idx===-1)idx=times.length-1;
+  const data={locationLabel:name+(country?", "+country:""),temp:forecast.hourly.temperature_2m[idx],rain:forecast.hourly.precipitation_probability[idx],code:forecast.hourly.weathercode[idx]};
+  weatherCacheKey=cacheKey;weatherCacheData=data;
+  renderWeatherCard(next,data);
+ }catch(err){$("weatherBody").innerHTML='<div class="weather-card"><div class="weather-icon">⚠️</div><div class="weather-info"><div class="muted" style="font-size:13px">Could not load the forecast: '+esc(err.message)+'</div></div></div>'}
+}
+function renderWeatherCard(match,data){
+ const[icon,label]=weatherInfo(data.code);
+ const rainHigh=data.rain>=50;
+ $("weatherBody").innerHTML='<div class="weather-card"><div class="weather-icon">'+icon+'</div><div class="weather-info"><div class="weather-loc">'+esc(data.locationLabel)+' · '+esc(match.match_code)+'</div><div class="weather-temp">'+Math.round(data.temp)+'°C <span class="muted" style="font-size:13px">'+esc(label)+'</span></div><div class="weather-rain'+(rainHigh?" high":"")+'">☔ '+Math.round(data.rain)+'% chance of rain</div></div></div>';
+}
 const AVATAR_COLORS=["#ffd447","#25d6ff","#ff5360","#42e3a4","#c084fc","#fb923c"];
 function initials(name){return String(name||"?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase()}
 function mpName(mp){if(!mp)return"Unknown";if(mp.player_id){const p=players.find(x=>x.id===mp.player_id);return p?p.name:"Unknown player"}return(mp.guest_name||"Visitor")+" (visitor)"}
