@@ -292,17 +292,25 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 
 <!-- MATCH MODAL -->
 <div id="matchModal" class="modal" onclick="if(event.target===this)closeModal('matchModal')">
-<div class="modalbox"><div class="modalhead"><div class="modaltitle">New Match</div><button class="close" onclick="closeModal('matchModal')">×</button></div>
+<div class="modalbox"><div class="modalhead"><div class="modaltitle" id="matchModalTitle">New Match</div><button class="close" onclick="closeModal('matchModal')">×</button></div>
 <p class="muted" style="margin:-6px 0 14px;font-size:12px">Just the schedule for now — you'll enter the final score once the match has been played (from its report).</p>
 <form id="matchForm" class="form">
+<input type="hidden" id="matchRowId">
 <div class="field"><label>Match Code</label><input id="matchCode" required placeholder="MD-001"></div>
 <div class="field"><label>Match Date</label><input id="matchDate" type="date" required></div>
 <div class="field"><label>Kickoff Time</label><input id="kickoff" type="time"></div>
 <div class="field"><label>End Time</label><input id="matchEnd" type="time"></div>
-<div class="field"><label>Location</label><input id="location" placeholder="Venue"></div>
+<div class="field"><label>Location</label><select id="locationSelect" onchange="onLocationSelectChange()">
+<option value="">Select ground</option>
+<option value="MMM Arena G12">MMM Arena G12</option>
+<option value="Islamabad Club Futsal Court">Islamabad Club Futsal Court</option>
+<option value="Dream Football Arena Islamabad">Dream Football Arena Islamabad</option>
+<option value="__other__">Other (type manually)</option>
+</select></div>
+<div class="field" id="locationOtherWrap" style="display:none"><label>Ground Name</label><input id="location" placeholder="Venue"></div>
 <div class="field"><label>Team A</label><select id="teamA" required></select></div>
 <div class="field"><label>Team B</label><select id="teamB" required></select></div>
-<div class="full form-actions"><button type="button" class="secondary" onclick="closeModal('matchModal')">Cancel</button><button class="primary" type="submit">SAVE MATCH</button></div>
+<div class="full form-actions"><button type="button" class="secondary" onclick="closeModal('matchModal')">Cancel</button><button class="primary" type="submit" id="matchSubmitBtn">SAVE MATCH</button></div>
 <div id="matchMsg" class="msg full"></div>
 </form></div></div>
 
@@ -688,7 +696,7 @@ function breakWindow(m){
 function renderUpcoming(){
  const now=new Date();
  const up=matches.filter(m=>matchDateTime(m)>=now).sort((a,b)=>matchDateTime(a)-matchDateTime(b));
- $("upcomingRibbon").innerHTML=up.length?up.map(m=>{const brk=breakWindow(m);return '<div class="rcard"><div class="small">'+esc(m.match_code)+' · '+esc(m.match_date)+(m.kickoff_time?' · '+esc(m.kickoff_time):"")+(m.end_time?'–'+esc(m.end_time):"")+'</div><div class="rteams"><span>'+esc(teamName(m.team_a_id,m.team_a_name))+'</span><span class="muted">vs</span><span>'+esc(teamName(m.team_b_id,m.team_b_name))+'</span></div><div class="muted">📍 '+esc(m.location||"—")+'</div>'+(brk?'<div class="muted" style="margin-top:6px;color:var(--cyan)">⏱ Half-time / Drinks Break: '+brk+'</div>':"")+'</div>'}).join(""):'<div class="empty">No upcoming matches scheduled.</div>';
+ $("upcomingRibbon").innerHTML=up.length?up.map(m=>{const brk=breakWindow(m);return '<div class="rcard"><div class="small">'+esc(m.match_code)+' · '+esc(m.match_date)+(m.kickoff_time?' · '+esc(m.kickoff_time):"")+(m.end_time?'–'+esc(m.end_time):"")+'</div><div class="rteams"><span>'+esc(teamName(m.team_a_id,m.team_a_name))+'</span><span class="muted">vs</span><span>'+esc(teamName(m.team_b_id,m.team_b_name))+'</span></div><div class="muted">📍 '+esc(m.location||"—")+'</div>'+(brk?'<div class="muted" style="margin-top:6px;color:var(--cyan)">⏱ Half-time / Drinks Break: '+brk+'</div>':"")+(isSuperAdmin?'<button class="secondary" style="margin-top:8px" onclick="editMatch(\''+m.id+'\')">✏️ Edit</button>':"")+'</div>'}).join(""):'<div class="empty">No upcoming matches scheduled.</div>';
 }
 function renderLastMatch(){
  const now=new Date();
@@ -698,7 +706,7 @@ function renderLastMatch(){
  renderMatchHistory(past);
 }
 function renderMatchHistory(past){
- $("historyRibbon").innerHTML=past.length?past.map(m=>'<div class="rcard"><div class="small">'+esc(m.match_code)+' · '+esc(m.match_date)+'</div><div class="rteams"><span>'+esc(teamName(m.team_a_id,m.team_a_name))+'</span><span class="rscore">'+esc(scoreLine(m))+'</span><span>'+esc(teamName(m.team_b_id,m.team_b_name))+'</span></div><button class="secondary" style="margin-top:8px" onclick="openMatchReport(\''+m.id+'\')">📄 Report</button>'+enterScoreBtn(m)+'</div>').join(""):'<div class="empty">No completed matches yet.</div>';
+ $("historyRibbon").innerHTML=past.length?past.map(m=>'<div class="rcard"><div class="small">'+esc(m.match_code)+' · '+esc(m.match_date)+'</div><div class="rteams"><span>'+esc(teamName(m.team_a_id,m.team_a_name))+'</span><span class="rscore">'+esc(scoreLine(m))+'</span><span>'+esc(teamName(m.team_b_id,m.team_b_name))+'</span></div><button class="secondary" style="margin-top:8px" onclick="openMatchReport(\''+m.id+'\')">📄 Report</button>'+enterScoreBtn(m)+(isSuperAdmin?'<button class="secondary" style="margin-top:8px" onclick="editMatch(\''+m.id+'\')">✏️ Edit</button>':"")+'</div>').join(""):'<div class="empty">No completed matches yet.</div>';
 }
 function renderHeadToHead(){
  const now=new Date();
@@ -886,9 +894,67 @@ function suggestMatchCode(){
  const next=(nums.length?Math.max(...nums):0)+1;
  return "MD-"+String(next).padStart(3,"0");
 }
-function resetMatchForm(){ $("matchCode").value=suggestMatchCode();$("matchDate").value=new Date().toISOString().slice(0,10);$("kickoff").value="";$("matchEnd").value="";$("location").value="";clearMsg("matchMsg");loadTeamSelects()}
+function onLocationSelectChange(){
+ const v=$("locationSelect").value;
+ $("locationOtherWrap").style.display=v==="__other__"?"":"none";
+ if(v!=="__other__")$("location").value="";
+}
+function getLocationValue(){
+ const v=$("locationSelect").value;
+ if(v==="__other__")return $("location").value.trim();
+ return v;
+}
+function setLocationValue(loc){
+ const presets=["MMM Arena G12","Islamabad Club Futsal Court","Dream Football Arena Islamabad"];
+ if(loc&&presets.includes(loc)){$("locationSelect").value=loc;$("locationOtherWrap").style.display="none";$("location").value=""}
+ else if(loc){$("locationSelect").value="__other__";$("locationOtherWrap").style.display="";$("location").value=loc}
+ else{$("locationSelect").value="";$("locationOtherWrap").style.display="none";$("location").value=""}
+}
+function resetMatchForm(){
+ $("matchModalTitle").textContent="New Match";
+ $("matchSubmitBtn").textContent="SAVE MATCH";
+ $("matchRowId").value="";
+ $("matchCode").value=suggestMatchCode();$("matchDate").value=new Date().toISOString().slice(0,10);$("kickoff").value="";$("matchEnd").value="";
+ setLocationValue("");
+ clearMsg("matchMsg");loadTeamSelects()
+}
+function editMatch(matchId){
+ const m=matches.find(x=>x.id===matchId);
+ if(!m)return;
+ openModal("matchModal");
+ $("matchModalTitle").textContent="Edit Match";
+ $("matchSubmitBtn").textContent="SAVE CHANGES";
+ $("matchRowId").value=m.id;
+ $("matchCode").value=m.match_code;
+ $("matchDate").value=m.match_date;
+ $("kickoff").value=m.kickoff_time?m.kickoff_time.slice(0,5):"";
+ $("matchEnd").value=m.end_time?m.end_time.slice(0,5):"";
+ setLocationValue(m.location||"");
+ loadTeamSelects().then(()=>{$("teamA").value=m.team_a_id||"";$("teamB").value=m.team_b_id||""});
+ clearMsg("matchMsg");
+}
+async function saveMatch(e){
+ e.preventDefault();
+ try{
+  if($("teamA").value===$("teamB").value)throw Error("Team A and Team B must be different.");
+  const teamAId=$("teamA").value,teamBId=$("teamB").value;
+  const rowId=$("matchRowId").value;
+  const body={match_code:$("matchCode").value.trim(),match_date:$("matchDate").value,kickoff_time:$("kickoff").value||null,end_time:$("matchEnd").value||null,location:getLocationValue()||null,team_a_id:teamAId,team_b_id:teamBId,team_a_name:teamName(teamAId),team_b_name:teamName(teamBId)};
+  if(rowId){
+   await api("matches","?id=eq."+encodeURIComponent(rowId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});
+   showMsg("matchMsg","Match updated.",true);
+   logActivity("Edit Match",body.match_code);
+  }else{
+   body.team_a_score=null;body.team_b_score=null;
+   await api("matches","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});
+   showMsg("matchMsg","Match scheduled.",true);
+   logActivity("Schedule Match",body.match_code+": "+teamName(teamAId)+" vs "+teamName(teamBId));
+  }
+  await loadAll();
+  setTimeout(()=>closeModal("matchModal"),500);
+ }catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("matchMsg",dup?"That match code is already used. Try "+suggestMatchCode()+" or pick another.":e.message)}
+}
 async function loadTeamSelects(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at,captain_id,vice_captain_id&order=team_name.asc");const o='<option value="">Select team</option>'+teams.map(t=>'<option value="'+t.id+'">'+esc(t.team_name)+'</option>').join("");$("teamA").innerHTML=o;$("teamB").innerHTML=o}catch(e){showMsg("matchMsg",e.message)}}
-async function saveMatch(e){e.preventDefault();try{if($("teamA").value===$("teamB").value)throw Error("Team A and Team B must be different.");const teamAId=$("teamA").value,teamBId=$("teamB").value;const body={match_code:$("matchCode").value.trim(),match_date:$("matchDate").value,kickoff_time:$("kickoff").value||null,end_time:$("matchEnd").value||null,location:$("location").value.trim()||null,team_a_id:teamAId,team_b_id:teamBId,team_a_name:teamName(teamAId),team_b_name:teamName(teamBId),team_a_score:null,team_b_score:null};await api("matches","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(body)});showMsg("matchMsg","Match scheduled.",true);logActivity("Schedule Match",body.match_code+": "+teamName(teamAId)+" vs "+teamName(teamBId));await loadAll();setTimeout(()=>closeModal("matchModal"),500)}catch(e){const dup=/duplicate key|23505/i.test(e.message);showMsg("matchMsg",dup?"That match code is already used. Try "+suggestMatchCode()+" or pick another.":e.message)}}
 async function loadTeamEditor(){try{if(!teams.length)teams=await api("teams","?select=id,team_code,team_name,status,created_at,captain_id,vice_captain_id&order=team_name.asc");$("teamEditor").innerHTML=(teams.length?teams.map(t=>{
  const squadPlayers=teamSquad.filter(s=>s.team_id===t.id).map(s=>players.find(p=>p.id===s.player_id)).filter(Boolean);
  const opts=(selectedId)=>'<option value="">\u2014 None \u2014</option>'+squadPlayers.map(p=>'<option value="'+p.id+'"'+(selectedId===p.id?" selected":"")+'>'+esc(p.name)+'</option>').join("");
