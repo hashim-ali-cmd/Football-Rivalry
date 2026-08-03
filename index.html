@@ -135,6 +135,9 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 .lineup-badge-c{fill:#ffd447}.lineup-badge-g{fill:#25d6ff}
 .lineup-badge-text{font:900 8px Inter;fill:#07111f;text-anchor:middle}
 .lineup-empty-note{font-size:12px;color:var(--muted);text-align:center}
+.lineup-subs-row{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-top:14px;width:100%}
+.lineup-subs-block{min-width:180px}
+.lineup-subs-block h4{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;text-align:center}
 .squad-editor-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .squad-editor-row label{width:90px;flex:none;font-size:12px;color:var(--muted);font-weight:700}
 .squad-editor-row select{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:#07111f;color:white}
@@ -256,6 +259,7 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <section class="section card card-inner reveal">
 <div class="section-title"><h2>Leaderboard</h2></div>
 <div id="leaders" class="leaders"><div class="loading">Calculating…</div></div>
+<button class="secondary" style="margin-top:14px" onclick="openFullLeaderboard()">View Full Leaderboard →</button>
 </section>
 
 <section class="section card card-inner reveal">
@@ -340,6 +344,12 @@ nav #roleBadge{order:-1;margin:0 0 10px 0!important;text-align:center;padding:10
 <div id="adminMsg" class="msg full"></div>
 </form>
 <p class="muted" style="font-size:12px;margin-top:10px">Note: if your Supabase project has "Confirm email" enabled under Authentication settings, this admin will need to click the confirmation link in their email once before they can log in with their PIN.</p>
+</div></div>
+
+<!-- FULL LEADERBOARD MODAL -->
+<div id="leaderboardModal" class="modal" onclick="if(event.target===this)closeModal('leaderboardModal')">
+<div class="modalbox"><div class="modalhead"><div class="modaltitle">Full Leaderboard</div><button class="close" onclick="closeModal('leaderboardModal')">×</button></div>
+<div id="leaderboardFullBody"></div>
 </div></div>
 
 <!-- PLAYER PROFILE MODAL -->
@@ -603,16 +613,28 @@ function completedMatchLineupSvg(m){
   +(hasB?matchLineupSideSvg(m.id,m.team_b_id,true):'<text x="450" y="160" style="font:700 13px Inter;fill:#ffffffaa;text-anchor:middle">No data</text>')
   +'</svg>';
 }
+function matchSubsHtml(matchId,teamId){
+ const subs=matchPlayers.filter(mp=>mp.match_id===matchId&&mp.team_id===teamId&&mp.is_starting===false);
+ if(!subs.length)return"";
+ return '<div class="lineup-subs-block"><h4>Substitutes</h4>'+subs.map(mp=>'<span class="sub-chip"><span class="avatar" style="width:22px;height:22px;font-size:10px;background:'+avatarColor(mpKey(mp))+'">'+esc(mpInitials(mp))+'</span>'+esc(mpName(mp).replace(" (visitor)",""))+((mp.goals||mp.assists)?' · '+mp.goals+'G '+mp.assists+'A':'')+'</span>').join("")+'</div>';
+}
+function completedMatchLineupBlock(m){
+ const svg=completedMatchLineupSvg(m);
+ if(!svg)return null;
+ const subsA=matchSubsHtml(m.id,m.team_a_id),subsB=matchSubsHtml(m.id,m.team_b_id);
+ const subsRow=(subsA||subsB)?'<div class="lineup-subs-row">'+subsA+subsB+'</div>':"";
+ return svg+subsRow;
+}
 function renderLastMatchLineup(){
  const now=new Date();
  const past=matches.filter(m=>matchDateTime(m)<now&&hasScore(m)).sort((a,b)=>matchDateTime(b)-matchDateTime(a));
  const m=past[0];
  if(!m){$("lastMatchLineupBody").innerHTML='<div class="empty">No completed matches yet.</div>';return}
- const svg=completedMatchLineupSvg(m);
- if(!svg){$("lastMatchLineupBody").innerHTML='<div class="empty">No positional stats logged for '+esc(m.match_code)+' yet — use Arrange Lineup from its Match Report to build this.</div>';return}
+ const block=completedMatchLineupBlock(m);
+ if(!block){$("lastMatchLineupBody").innerHTML='<div class="empty">No positional stats logged for '+esc(m.match_code)+' yet — use Arrange Lineup from its Match Report to build this.</div>';return}
  const nameA=teamName(m.team_a_id,m.team_a_name),nameB=teamName(m.team_b_id,m.team_b_name);
  const colorA=teamColor(m.team_a_id),colorB=teamColor(m.team_b_id);
- $("lastMatchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header-main"><span class="lineup-swatch" style="background:'+colorA+'"></span><span class="lineup-tname">'+esc(nameA)+'</span><span class="lineup-vs">'+esc(scoreLine(m))+'</span><span class="lineup-tname">'+esc(nameB)+'</span><span class="lineup-swatch" style="background:'+colorB+'"></span></div><div class="lineup-meta">'+esc(m.match_code)+' · '+esc(m.match_date)+'</div>'+svg+'</div>';
+ $("lastMatchLineupBody").innerHTML='<div class="lineup-wrap"><div class="lineup-header-main"><span class="lineup-swatch" style="background:'+colorA+'"></span><span class="lineup-tname">'+esc(nameA)+'</span><span class="lineup-vs">'+esc(scoreLine(m))+'</span><span class="lineup-tname">'+esc(nameB)+'</span><span class="lineup-swatch" style="background:'+colorB+'"></span></div><div class="lineup-meta">'+esc(m.match_code)+' · '+esc(m.match_date)+'</div>'+block+'</div>';
 }
 function renderHeroStats(){
  const played=matches.filter(m=>hasScore(m)).length;
@@ -819,18 +841,33 @@ function renderTeams(){
   return '<div class="team-card" style="flex-direction:column;align-items:stretch;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="pid">TEAM</div><div class="team-name">'+esc(t.team_name)+'</div></div>'+(btns?'<div style="display:flex;gap:8px">'+btns+'</div>':"")+'</div><div class="futsal-wrap">'+futsalPitchSvg(t.id)+'<div class="squad-subs"><h4>Substitutes</h4>'+renderSquadSubs(t.id)+'<h4 style="margin-top:16px">Like-for-Like Backups</h4>'+renderReplacements(t.id)+'</div></div></div>';
  }).join(""):'<div class="empty">No teams table/data available.</div>';
 }
-function renderLeaders(){
+function computePlayerStats(){
  const stats={};players.forEach(p=>stats[p.id]={...p,goals:0,assists:0,apps:0,clean:0,conceded:0,gkApps:0});
  matchPlayers.forEach(mp=>{
   if(!stats[mp.player_id])return;
   stats[mp.player_id].goals+=Number(mp.goals||0);stats[mp.player_id].assists+=Number(mp.assists||0);stats[mp.player_id].apps++;
   if(mp.is_goalkeeper){stats[mp.player_id].gkApps++;stats[mp.player_id].conceded+=Number(mp.goals_conceded||0);if(mp.clean_sheet)stats[mp.player_id].clean++}
  });
- const a=Object.values(stats),best=k=>[...a].sort((x,y)=>y[k]-x[k])[0],g=best("goals"),as=best("assists");
+ return Object.values(stats);
+}
+function renderLeaders(){
+ const a=computePlayerStats(),best=k=>[...a].sort((x,y)=>y[k]-x[k])[0],g=best("goals"),as=best("assists");
  const keepers=a.filter(x=>x.gkApps>0).sort((x,y)=>(x.conceded-y.conceded)||(y.clean-x.clean));
  const k=keepers[0];
  $("leaders").innerHTML='<div class="leader"><div>⚽</div><div class="leader-label">TOP SCORER</div><div class="leader-name">'+esc(g?.name||"—")+'</div><div class="muted">'+(g?.goals||0)+' goals</div></div><div class="leader"><div>🎯</div><div class="leader-label">TOP ASSISTS</div><div class="leader-name">'+esc(as?.name||"—")+'</div><div class="muted">'+(as?.assists||0)+' assists</div></div><div class="leader"><div>🧤</div><div class="leader-label">BEST KEEPER</div><div class="leader-name">'+esc(k?.name||"—")+'</div><div class="muted">'+(k?(k.conceded+' conceded · '+k.clean+' clean sheets'):"—")+'</div></div>';
  renderTeamOfMonth();
+}
+function openFullLeaderboard(){
+ const a=computePlayerStats();
+ const scorers=a.filter(x=>x.apps>0).sort((x,y)=>y.goals-x.goals||y.assists-x.assists);
+ const assisters=a.filter(x=>x.apps>0).sort((x,y)=>y.assists-x.assists||y.goals-x.goals);
+ const keepers=a.filter(x=>x.gkApps>0).sort((x,y)=>(x.conceded-y.conceded)||(y.clean-x.clean));
+ const rankList=(arr,statFn)=>arr.length?arr.map((p,i)=>'<div class="pmp-row"><div style="width:22px;text-align:center;font-weight:800;color:var(--muted);flex:none">'+(i+1)+'</div><div class="avatar" style="background:'+avatarColor(p.id)+'">'+esc(initials(p.name))+'</div><div style="flex:1"><div class="pmp-name">'+esc(p.name)+'</div><div class="pmp-meta">'+esc(p.position||p.player_id)+'</div></div><div style="font-weight:800;color:var(--yellow);white-space:nowrap">'+statFn(p)+'</div></div>').join(""):'<div class="empty">No data yet.</div>';
+ $("leaderboardFullBody").innerHTML=
+  '<h4 style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">⚽ Top Scorers</h4><div class="players-modal-list" style="max-height:none;margin-bottom:22px">'+rankList(scorers,p=>p.goals+' G · '+p.assists+' A')+'</div>'+
+  '<h4 style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">🎯 Top Assists</h4><div class="players-modal-list" style="max-height:none;margin-bottom:22px">'+rankList(assisters,p=>p.assists+' A · '+p.goals+' G')+'</div>'+
+  '<h4 style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">🧤 Best Keepers</h4><div class="players-modal-list" style="max-height:none">'+rankList(keepers,p=>p.conceded+' conceded · '+p.clean+' CS')+'</div>';
+ openModal("leaderboardModal");
 }
 function renderTeamOfMonth(){
  const now=new Date();
@@ -1139,15 +1176,16 @@ function openLineupEditor(matchId){
   // Prefer existing stat rows (so we don't create duplicates); fall back to the full roster
   // for anyone who played but hasn't had stats entered yet — a blank stats row is created on save.
   const candidates=[
-   ...existingRows.map(r=>({value:"row:"+r.id,label:mpName(r)+(r.is_goalkeeper?" (GK)":""),slot:r.slot})),
-   ...players.filter(p=>!existingPlayerIds.has(p.id)).map(p=>({value:"player:"+p.id,label:p.name+" · "+p.player_id,slot:null}))
+   ...existingRows.map(r=>({value:"row:"+r.id,label:mpName(r)+(r.is_goalkeeper?" (GK)":""),slot:r.slot,isSub:r.is_starting===false})),
+   ...players.filter(p=>!existingPlayerIds.has(p.id)).map(p=>({value:"player:"+p.id,label:p.name+" · "+p.player_id,slot:null,isSub:false}))
   ];
   const slotRows=Object.entries(LINEUP_SLOTS).map(([key])=>{
    const current=candidates.find(c=>c.slot===key);
    const opts=['<option value="">— Empty —</option>'].concat(candidates.map(c=>'<option value="'+c.value+'"'+(current&&current.value===c.value?" selected":"")+'>'+esc(c.label)+'</option>'));
    return '<div class="squad-editor-row"><label>'+esc(SLOT_LABELS[key])+'</label><select data-team="'+t.id+'" data-slot="'+key+'">'+opts.join("")+'</select></div>';
   }).join("");
-  return '<div style="margin-bottom:18px">'+header+slotRows+'</div>';
+  const subChecklist='<div class="sub-picker" style="margin-top:8px">'+candidates.map(c=>'<label><input type="checkbox" data-team="'+t.id+'" value="'+c.value+'" '+(c.isSub?"checked":"")+'> '+esc(c.label)+'</label>').join("")+'</div>';
+  return '<div style="margin-bottom:18px">'+header+slotRows+'<div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 4px">Substitutes used in this match</div>'+subChecklist+'</div>';
  });
  $("lineupEditorBody").innerHTML=blocks.join('<hr style="border-color:var(--line);margin:6px 0 14px">');
  clearMsg("lineupEditorMsg");
@@ -1159,23 +1197,30 @@ async function saveLineupArrangement(){
   const rowUpdates=[],newRows=[],clearIds=new Set();
   for(const teamId of teamIds){
    const selects=[...document.querySelectorAll('#lineupEditorBody select[data-team="'+teamId+'"]')];
-   const chosen=selects.map(s=>({slot:s.dataset.slot,value:s.value})).filter(x=>x.value);
-   const values=chosen.map(x=>x.value);
-   const dup=values.filter((v,i,arr)=>arr.indexOf(v)!==i);
+   const chosenStarters=selects.map(s=>({slot:s.dataset.slot,value:s.value})).filter(x=>x.value);
+   const starterValues=chosenStarters.map(x=>x.value);
+   const dup=starterValues.filter((v,i,arr)=>arr.indexOf(v)!==i);
    if(dup.length)throw Error("A player can only occupy one slot per team.");
-   matchPlayers.filter(mp=>mp.match_id===currentLineupMatchId&&mp.team_id===teamId&&mp.slot&&!values.includes("row:"+mp.id)).forEach(mp=>clearIds.add(mp.id));
+   const subChecks=[...document.querySelectorAll('#lineupEditorBody input[type="checkbox"][data-team="'+teamId+'"]')];
+   const subValues=subChecks.filter(c=>c.checked).map(c=>c.value).filter(v=>!starterValues.includes(v));
    const m=matches.find(x=>x.id===currentLineupMatchId);
    const tName=teamName(teamId);
-   chosen.forEach(c=>{
-    if(c.value.startsWith("row:"))rowUpdates.push({rowId:c.value.slice(4),slot:c.slot});
+   const allChosen=new Set([...starterValues,...subValues]);
+   chosenStarters.forEach(c=>{
+    if(c.value.startsWith("row:"))rowUpdates.push({rowId:c.value.slice(4),slot:c.slot,is_starting:true});
     else{
      const playerId=c.value.slice(7);
-     newRows.push({match_id:currentLineupMatchId,player_id:playerId,team_id:teamId,team_name:tName,is_goalkeeper:c.slot==="GK",goals:0,assists:0,clean_sheet:c.slot==="GK",goals_conceded:c.slot==="GK"?0:null,slot:c.slot});
+     newRows.push({match_id:currentLineupMatchId,player_id:playerId,team_id:teamId,team_name:tName,is_goalkeeper:c.slot==="GK",goals:0,assists:0,clean_sheet:c.slot==="GK",goals_conceded:c.slot==="GK"?0:null,slot:c.slot,is_starting:true});
     }
    });
+   subValues.forEach(v=>{
+    if(v.startsWith("row:"))rowUpdates.push({rowId:v.slice(4),slot:null,is_starting:false});
+    else newRows.push({match_id:currentLineupMatchId,player_id:v.slice(7),team_id:teamId,team_name:tName,is_goalkeeper:false,goals:0,assists:0,clean_sheet:false,goals_conceded:null,slot:null,is_starting:false});
+   });
+   matchPlayers.filter(mp=>mp.match_id===currentLineupMatchId&&mp.team_id===teamId&&(mp.slot||mp.is_starting!==null&&mp.is_starting!==undefined)&&!allChosen.has("row:"+mp.id)).forEach(mp=>clearIds.add(mp.id));
   }
-  for(const u of rowUpdates)await api("match_players","?id=eq."+encodeURIComponent(u.rowId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({slot:u.slot})});
-  for(const id of clearIds)await api("match_players","?id=eq."+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({slot:null})});
+  for(const u of rowUpdates)await api("match_players","?id=eq."+encodeURIComponent(u.rowId),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({slot:u.slot,is_starting:u.is_starting})});
+  for(const id of clearIds)await api("match_players","?id=eq."+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({slot:null,is_starting:false})});
   if(newRows.length)await api("match_players","",{method:"POST",headers:{"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify(newRows)});
   showMsg("lineupEditorMsg","Lineup saved.",true);
   logActivity("Arrange Lineup",matches.find(m=>m.id===currentLineupMatchId)?.match_code||currentLineupMatchId);
@@ -1196,13 +1241,13 @@ async function exportMatchReportPDF(){
   const motmPlayer=m.man_of_match_id?players.find(p=>p.id===m.man_of_match_id):null;
   const hexToRgb=h=>{h=String(h).replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255]};
 
-  // Capture the futsal lineup pitch as an image, if it's been arranged
+  // Capture the futsal lineup pitch (plus substitutes) as an image, if it's been arranged
   let pitchImg=null,pitchRatio=600/330;
-  const svg=completedMatchLineupSvg(m);
-  if(svg&&window.html2canvas){
+  const lineupBlock=completedMatchLineupBlock(m);
+  if(lineupBlock&&window.html2canvas){
    const wrapper=document.createElement("div");
    wrapper.style.cssText="position:fixed;left:-9999px;top:0;width:640px;background:#0a1730;padding:16px";
-   wrapper.innerHTML=svg;
+   wrapper.innerHTML=lineupBlock;
    document.body.appendChild(wrapper);
    try{const canvas=await html2canvas(wrapper,{backgroundColor:"#0a1730",scale:2});pitchImg=canvas.toDataURL("image/png");pitchRatio=canvas.width/canvas.height}catch(e){/* fall back to no image */}
    document.body.removeChild(wrapper);
